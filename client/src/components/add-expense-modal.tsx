@@ -211,7 +211,7 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
   const onSubmit = (data: ExpenseFormData) => {
     const expenseData = {
       amount: data.amount,
-      purchaseDate: new Date("2023-10-06T00:00:00Z"),
+      purchaseDate: new Date(data.purchaseDate),
       paymentMethod: data.paymentMethod,
       expenseType: data.expenseType,
       routineCategory:
