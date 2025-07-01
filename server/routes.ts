@@ -177,6 +177,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/supermarkets/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id); // Pega o ID da URL
+
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid ID" });
+      }
+
+      const deleted = await storage.deleteSupermarket(id);
+
+      if (!deleted) {
+        return res.status(404).json({ error: "Supermarket not found" });
+      }
+
+      res
+        .status(200)
+        .json({ message: "Supermarket deleted successfully", deleted });
+    } catch (error) {
+      console.error("Error deleting supermarket:", error);
+      // Erro 500 para problemas internos do servidor.
+      // Pode ser mais específico se o DB retornar erro de FK, por exemplo.
+      res.status(500).json({ error: "Failed to delete supermarket" });
+    }
+  });
+
   app.get("/api/restaurants", async (req, res) => {
     try {
       const restaurants = await storage.getRestaurants();

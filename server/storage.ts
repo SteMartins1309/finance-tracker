@@ -55,7 +55,9 @@ export interface IStorage {
 
   // Category management
   addSupermarket(supermarket: InsertSupermarket): Promise<Supermarket>;
+  deleteSupermarket(id: number): Promise<Supermarket | null>;
   getSupermarkets(): Promise<Supermarket[]>;
+
   createRestaurant(restaurant: InsertRestaurant): Promise<Restaurant>;
   getRestaurants(): Promise<Restaurant[]>;
   createServiceType(serviceType: InsertServiceType): Promise<ServiceType>;
@@ -284,6 +286,14 @@ export class DatabaseStorage implements IStorage {
       .values(insertSupermarket)
       .returning();
     return supermarket;
+  }
+
+  async deleteSupermarket(id: number): Promise<Supermarket | null> {
+    const [deletedSupermarket] = await db
+      .delete(supermarkets)
+      .where(eq(supermarkets.id, id))
+      .returning();
+    return deletedSupermarket || null;
   }
 
   async getSupermarkets(): Promise<Supermarket[]> {
