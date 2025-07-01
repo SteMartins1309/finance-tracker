@@ -415,60 +415,38 @@ export default function Categories() {
         </Card>
       </div>
 
-      {/* NOVO: AlertDialog de Confirmação para Exclusão de Supermercado */}
-            <AlertDialog
-              open={!!supermarketToDelete} // Abre se há um supermercado selecionado para exclusão
-              onOpenChange={(open) => !open && setSupermarketToDelete(null)} // Fecha o modal se for cancelado
+      {/* AlertDialog de Confirmação para Exclusão de Supermercado */}
+      <AlertDialog
+        open={!!supermarketToDelete}
+        onOpenChange={(open) => !open && setSupermarketToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete{" "}
+              <span className="font-semibold text-primary">{supermarketToDelete?.name}</span>{" "}
+              from your supermarkets list.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteSupermarketMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (supermarketToDelete) {
+                  deleteSupermarketMutation.mutate(supermarketToDelete.id);
+                }
+              }}
+              disabled={deleteSupermarketMutation.isPending}
+              className="bg-destructive hover:bg-destructive/90"
             >
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This action cannot be undone. This will permanently delete{" "}
-                    <span className="font-semibold text-primary">{supermarketToDelete?.name}</span>{" "}
-                    from your supermarkets list.
-                    {/* Se você quiser um campo de confirmação adicional, pode adicionar aqui
-                    <Form {...formConfirm}>
-                      <form onSubmit={formConfirm.handleSubmit(() => confirmDelete())}>
-                        <FormField
-                          control={formConfirm.control}
-                          name="confirm"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Type 'delete' to confirm</FormLabel>
-                              <FormControl>
-                                <Input {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </form>
-                    </Form>
-                    */}
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel disabled={deleteSupermarketMutation.isPending}>
-                    Cancel
-                  </AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => {
-                      if (supermarketToDelete) {
-                        deleteSupermarketMutation.mutate(supermarketToDelete.id);
-                      }
-                    }}
-                    disabled={deleteSupermarketMutation.isPending}
-                    className="bg-destructive hover:bg-destructive/90"
-                  >
-                    {deleteSupermarketMutation.isPending ? "Deleting..." : "Delete"}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-        );
-      }
+              {deleteSupermarketMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

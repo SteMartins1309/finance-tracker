@@ -649,6 +649,16 @@ class MemoryStorage implements IStorage {
     return this.supermarkets.sort((a, b) => a.name.localeCompare(b.name));
   }
 
+  async deleteSupermarket(id: number): Promise<Supermarket | null> {
+    const index = this.supermarkets.findIndex(s => s.id === id);
+    if (index === -1) {
+      return null;
+    }
+    const deletedSupermarket = this.supermarkets[index];
+    this.supermarkets.splice(index, 1);
+    return deletedSupermarket;
+  }
+
   async createRestaurant(
     insertRestaurant: InsertRestaurant,
   ): Promise<Restaurant> {
