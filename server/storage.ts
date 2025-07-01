@@ -13,7 +13,7 @@ import {
   type InsertExpense,
   type OccasionalGroup,
   type InsertOccasionalGroup,
-  type Supermarket,
+  type Supermarket, // já visto
   type InsertSupermarket,
   type Restaurant,
   type InsertRestaurant,
@@ -277,7 +277,7 @@ export class DatabaseStorage implements IStorage {
     return group;
   }
 
-  // Category management methods
+  // Início das funções de manutenção da categoria 'supermarket'
   async addSupermarket(
     insertSupermarket: InsertSupermarket,
   ): Promise<Supermarket> {
@@ -299,6 +299,7 @@ export class DatabaseStorage implements IStorage {
   async getSupermarkets(): Promise<Supermarket[]> {
     return await db.select().from(supermarkets).orderBy(supermarkets.name);
   }
+  // Fim das funções de manutenção da categoria 'supermarket'
 
   async createRestaurant(
     insertRestaurant: InsertRestaurant,
@@ -402,15 +403,17 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-// Temporary in-memory storage while database connection is being resolved
+// Memória temporária enquanto a conexão com o banco de dados é resolvida
 class MemoryStorage implements IStorage {
   private expenses: Expense[] = [];
   private occasionalGroups: OccasionalGroup[] = [];
-  private supermarkets: Supermarket[] = [
-    { id: 1, name: "Walmart" },
-    { id: 2, name: "Target" },
-    { id: 3, name: "Costco" },
+  
+  private supermarkets: Supermarket[] = [  // já visto
+    { id: 1, name: "Villareal" },
+    { id: 2, name: "Bretas" },
+    { id: 3, name: "Consul" },
   ];
+  
   private restaurants: Restaurant[] = [
     { id: 1, name: "McDonald's" },
     { id: 2, name: "Subway" },
@@ -634,6 +637,7 @@ class MemoryStorage implements IStorage {
     return group;
   }
 
+  // Início das funções de manutenção da categoria 'supermarket'
   async addSupermarket(
     insertSupermarket: InsertSupermarket,
   ): Promise<Supermarket> {
@@ -645,12 +649,8 @@ class MemoryStorage implements IStorage {
     return supermarket;
   }
 
-  async getSupermarkets(): Promise<Supermarket[]> {
-    return this.supermarkets.sort((a, b) => a.name.localeCompare(b.name));
-  }
-
   async deleteSupermarket(id: number): Promise<Supermarket | null> {
-    const index = this.supermarkets.findIndex(s => s.id === id);
+    const index = this.supermarkets.findIndex((s) => s.id === id);
     if (index === -1) {
       return null;
     }
@@ -658,6 +658,11 @@ class MemoryStorage implements IStorage {
     this.supermarkets.splice(index, 1);
     return deletedSupermarket;
   }
+
+  async getSupermarkets(): Promise<Supermarket[]> {
+    return this.supermarkets.sort((a, b) => a.name.localeCompare(b.name));
+  }
+  // Fim das funções de manutenção da categoria 'supermarket'
 
   async createRestaurant(
     insertRestaurant: InsertRestaurant,

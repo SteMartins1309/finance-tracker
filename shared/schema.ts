@@ -1,7 +1,16 @@
 // IMPORTAÇÕES
 
 // drizzle-orm/pg-core: Importa funções para definir tabelas e colunas específicas do PostgreSQL (como pgTable, text, serial, integer, boolean, decimal, timestamp, pgEnum).
-import { pgTable, text, serial, integer, boolean, decimal, timestamp, pgEnum } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  serial,
+  integer,
+  boolean,
+  decimal,
+  timestamp,
+  pgEnum,
+} from "drizzle-orm/pg-core";
 // drizzle-zod: Importa createInsertSchema, que é uma ferramenta para gerar automaticamente esquemas de validação Zod a partir das suas tabelas Drizzle.
 import { createInsertSchema } from "drizzle-zod";
 // zod: A biblioteca de validação de esquemas.
@@ -9,25 +18,51 @@ import { z } from "zod";
 // relations (de drizzle-orm): Usado para definir os relacionamentos entre suas tabelas no Drizzle ORM.
 import { relations } from "drizzle-orm";
 
-
 //ENUMS: Define tipos de dados enumerados que serão usados como tipos de coluna no seu banco de dados. Isso garante que certos campos só possam ter valores predefinidos
 
 // paymentMethodEnum: método de pagamento
-export const paymentMethodEnum = pgEnum("payment_method", ["credit-card", "debit-card", "cash", "bank-transfer"]);
+export const paymentMethodEnum = pgEnum("payment_method", [
+  "credit-card",
+  "debit-card",
+  "cash",
+  "bank-transfer",
+]);
 // expenseTypeEnum: tipo de despesa (rotina ou ocasional)
-export const expenseTypeEnum = pgEnum("expense_type", ["routine", "occasional"]);
+export const expenseTypeEnum = pgEnum("expense_type", [
+  "routine",
+  "occasional",
+]);
 // routineCategoryEnum: categoria de despesa rotineira
 export const routineCategoryEnum = pgEnum("routine_category", [
-  "supermarket", "food", "services", "leisure", "personal-care", 
-  "shopping", "transportation", "health", "family", "charity"
+  "supermarket",
+  "food",
+  "services",
+  "leisure",
+  "personal-care",
+  "shopping",
+  "transportation",
+  "health",
+  "family",
+  "charity",
 ]);
 // purchaseTypeEnum: tipo de compra (presencial ou online)
-export const purchaseTypeEnum = pgEnum("purchase_type", ["in-person", "online"]);
+export const purchaseTypeEnum = pgEnum("purchase_type", [
+  "in-person",
+  "online",
+]);
 // transportModeEnum: modo de transporte
-export const transportModeEnum = pgEnum("transport_mode", ["car", "uber", "public-transport", "walking", "bicycle"]);
+export const transportModeEnum = pgEnum("transport_mode", [
+  "car",
+  "uber",
+  "public-transport",
+  "walking",
+  "bicycle",
+]);
 // occasionalGroupStatusEnum: status do grupo de despesas ocasionais
-export const occasionalGroupStatusEnum = pgEnum("occasional_group_status", ["open", "closed"]);
-
+export const occasionalGroupStatusEnum = pgEnum("occasional_group_status", [
+  "open",
+  "closed",
+]);
 
 // TABELAS (pgTable): Cada uma dessas constantes (users, occasionalGroups, supermarkets, etc.) representa uma tabela no seu banco de dados PostgreSQL. Para cada tabela, você define:
 // id: Uma chave primária serial (auto-incremento).
@@ -47,11 +82,13 @@ export const occasionalGroups = pgTable("occasional_groups", {
   status: occasionalGroupStatusEnum("status").notNull().default("open"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
-// supermarkets: tabela de supermercados
+
+// (PRONTO) supermarkets: tabela de supermercados
 export const supermarkets = pgTable("supermarkets", {
   id: serial("id").primaryKey(),
   name: text("name").notNull().unique(),
 });
+
 // restaurants: tabela de restaurantes
 export const restaurants = pgTable("restaurants", {
   id: serial("id").primaryKey(),
@@ -96,9 +133,10 @@ export const expenses = pgTable("expenses", {
   expenseType: expenseTypeEnum("expense_type").notNull(),
   routineCategory: routineCategoryEnum("routine_category"),
   occasionalGroupId: integer("occasional_group_id"),
-  
-  // Category-specific fields
+
+  // Cada campo é uma chave estrangeira (foreign keys) que referencia uma das tabelas de categorias específicas
   supermarketId: integer("supermarket_id"),
+
   restaurantId: integer("restaurant_id"),
   serviceTypeId: integer("service_type_id"),
   leisureTypeId: integer("leisure_type_id"),
@@ -106,7 +144,7 @@ export const expenses = pgTable("expenses", {
   healthTypeId: integer("health_type_id"),
   familyMemberId: integer("family_member_id"),
   charityTypeId: integer("charity_type_id"),
-  
+
   // Text fields
   description: text("description"),
   storeName: text("store_name"),
@@ -114,7 +152,7 @@ export const expenses = pgTable("expenses", {
   destination: text("destination"),
   transportMode: transportModeEnum("transport_mode"),
   purchaseType: purchaseTypeEnum("purchase_type"),
-  
+
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -125,6 +163,7 @@ export const expensesRelations = relations(expenses, ({ one }) => ({
     references: [occasionalGroups.id],
   }),
   supermarket: one(supermarkets, {
+    // Define que cada despesa pode estar associada a um supermercado específico
     fields: [expenses.supermarketId],
     references: [supermarkets.id],
   }),
@@ -158,10 +197,14 @@ export const expensesRelations = relations(expenses, ({ one }) => ({
   }),
 }));
 
-export const occasionalGroupsRelations = relations(occasionalGroups, ({ many }) => ({
-  expenses: many(expenses),
-}));
+export const occasionalGroupsRelations = relations(
+  occasionalGroups,
+  ({ many }) => ({
+    expenses: many(expenses),
+  }),
+);
 
+// Define que um supermercado pode ter várias despesas associadas
 export const supermarketsRelations = relations(supermarkets, ({ many }) => ({
   expenses: many(expenses),
 }));
@@ -178,9 +221,12 @@ export const leisureTypesRelations = relations(leisureTypes, ({ many }) => ({
   expenses: many(expenses),
 }));
 
-export const personalCareTypesRelations = relations(personalCareTypes, ({ many }) => ({
-  expenses: many(expenses),
-}));
+export const personalCareTypesRelations = relations(
+  personalCareTypes,
+  ({ many }) => ({
+    expenses: many(expenses),
+  }),
+);
 
 export const healthTypesRelations = relations(healthTypes, ({ many }) => ({
   expenses: many(expenses),
@@ -194,27 +240,31 @@ export const charityTypesRelations = relations(charityTypes, ({ many }) => ({
   expenses: many(expenses),
 }));
 
-
-// Insert Schemas (createInsertSchema): Utiliza o drizzle-zod para criar automaticamente esquemas de validação Zod para a inserção de dados em cada tabela. 
-// O .omit({ id: true, createdAt: true }) é usado para indicar que os campos id e createdAt (que são gerados automaticamente pelo banco de dados) 
+// Insert Schemas (createInsertSchema): Utiliza o drizzle-zod para criar automaticamente esquemas de validação Zod para a inserção de dados em cada tabela.
+// O .omit({ id: true, createdAt: true }) é usado para indicar que os campos id e createdAt (que são gerados automaticamente pelo banco de dados)
 // não precisam ser fornecidos ao criar um novo registro.
 
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
 });
 
-export const insertOccasionalGroupSchema = createInsertSchema(occasionalGroups).omit({
+export const insertOccasionalGroupSchema = createInsertSchema(
+  occasionalGroups,
+).omit({
   id: true,
   createdAt: true,
 });
 
-export const insertExpenseSchema = createInsertSchema(expenses).omit({
-  id: true,
-  createdAt: true,
-}).extend({
-  purchaseDate: z.string().transform((str) => new Date(str)),
-});
+export const insertExpenseSchema = createInsertSchema(expenses)
+  .omit({
+    id: true,
+    createdAt: true,
+  })
+  .extend({
+    purchaseDate: z.string().transform((str) => new Date(str)),
+  });
 
+// Define esquema de inserção para a tabela de supermercados
 export const insertSupermarketSchema = createInsertSchema(supermarkets).omit({
   id: true,
 });
@@ -231,7 +281,9 @@ export const insertLeisureTypeSchema = createInsertSchema(leisureTypes).omit({
   id: true,
 });
 
-export const insertPersonalCareTypeSchema = createInsertSchema(personalCareTypes).omit({
+export const insertPersonalCareTypeSchema = createInsertSchema(
+  personalCareTypes,
+).omit({
   id: true,
 });
 
@@ -247,7 +299,7 @@ export const insertCharityTypeSchema = createInsertSchema(charityTypes).omit({
   id: true,
 });
 
-// TIPOS (export type): Exporta tipos TypeScript (InsertUser, User, InsertExpense, Expense, etc.) que são inferidos a partir dos esquemas Drizzle e Zod. 
+// TIPOS (export type): Exporta tipos TypeScript (InsertUser, User, InsertExpense, Expense, etc.) que são inferidos a partir dos esquemas Drizzle e Zod.
 // Isso fornece forte tipagem em todo o seu aplicativo, ajudando a prevenir erros e melhorando a autocompletar no seu editor de código.
 export type InsertUser = z.infer<typeof insertUserSchema>; // Para validação de inserção
 export type User = typeof users.$inferSelect; // Para leitura da tabela
@@ -258,6 +310,7 @@ export type OccasionalGroup = typeof occasionalGroups.$inferSelect;
 export type InsertExpense = z.infer<typeof insertExpenseSchema>;
 export type Expense = typeof expenses.$inferSelect;
 
+// Define o tipo TypeScript para a inserção e leitura de supermercados
 export type InsertSupermarket = z.infer<typeof insertSupermarketSchema>;
 export type Supermarket = typeof supermarkets.$inferSelect;
 
@@ -270,7 +323,9 @@ export type ServiceType = typeof serviceTypes.$inferSelect;
 export type InsertLeisureType = z.infer<typeof insertLeisureTypeSchema>;
 export type LeisureType = typeof leisureTypes.$inferSelect;
 
-export type InsertPersonalCareType = z.infer<typeof insertPersonalCareTypeSchema>;
+export type InsertPersonalCareType = z.infer<
+  typeof insertPersonalCareTypeSchema
+>;
 export type PersonalCareType = typeof personalCareTypes.$inferSelect;
 
 export type InsertHealthType = z.infer<typeof insertHealthTypeSchema>;

@@ -11,6 +11,10 @@ A comprehensive personal finance tracking web application with dynamic expense f
 - **Routing**: Wouter for client-side routing
 
 ## Recent Changes
+- **2025-01-01**: Fixed syntax error in Categories component (mismatched JSX braces)
+- **2025-01-01**: Added missing deleteSupermarket method to MemoryStorage class
+- **2025-01-01**: Fixed method name inconsistencies in storage interface (getSupermarket → getSupermarkets)
+- **2025-01-01**: Resolved runtime errors for supermarket CRUD operations
 - **2025-01-01**: Fixed method name error in routes.ts (`addSupermarket` → `createSupermarket`)
 - **2025-01-01**: Implemented temporary in-memory storage to resolve database connection issues
 - **2025-01-01**: Fixed sidebar nested anchor tag warning by replacing `<a>` with `<div>`
