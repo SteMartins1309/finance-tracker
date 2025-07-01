@@ -211,6 +211,8 @@ export const insertOccasionalGroupSchema = createInsertSchema(occasionalGroups).
 export const insertExpenseSchema = createInsertSchema(expenses).omit({
   id: true,
   createdAt: true,
+}).extend({
+  purchaseDate: z.string().transform((str) => new Date(str)),
 });
 
 export const insertSupermarketSchema = createInsertSchema(supermarkets).omit({
