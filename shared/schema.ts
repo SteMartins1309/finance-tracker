@@ -1,73 +1,93 @@
+// IMPORTAÇÕES
+
+// drizzle-orm/pg-core: Importa funções para definir tabelas e colunas específicas do PostgreSQL (como pgTable, text, serial, integer, boolean, decimal, timestamp, pgEnum).
 import { pgTable, text, serial, integer, boolean, decimal, timestamp, pgEnum } from "drizzle-orm/pg-core";
+// drizzle-zod: Importa createInsertSchema, que é uma ferramenta para gerar automaticamente esquemas de validação Zod a partir das suas tabelas Drizzle.
 import { createInsertSchema } from "drizzle-zod";
+// zod: A biblioteca de validação de esquemas.
 import { z } from "zod";
+// relations (de drizzle-orm): Usado para definir os relacionamentos entre suas tabelas no Drizzle ORM.
 import { relations } from "drizzle-orm";
 
-// Enums
+
+//ENUMS: Define tipos de dados enumerados que serão usados como tipos de coluna no seu banco de dados. Isso garante que certos campos só possam ter valores predefinidos
+
+// paymentMethodEnum: método de pagamento
 export const paymentMethodEnum = pgEnum("payment_method", ["credit-card", "debit-card", "cash", "bank-transfer"]);
+// expenseTypeEnum: tipo de despesa (rotina ou ocasional)
 export const expenseTypeEnum = pgEnum("expense_type", ["routine", "occasional"]);
+// routineCategoryEnum: categoria de despesa rotineira
 export const routineCategoryEnum = pgEnum("routine_category", [
   "supermarket", "food", "services", "leisure", "personal-care", 
   "shopping", "transportation", "health", "family", "charity"
 ]);
+// purchaseTypeEnum: tipo de compra (presencial ou online)
 export const purchaseTypeEnum = pgEnum("purchase_type", ["in-person", "online"]);
+// transportModeEnum: modo de transporte
 export const transportModeEnum = pgEnum("transport_mode", ["car", "uber", "public-transport", "walking", "bicycle"]);
+// occasionalGroupStatusEnum: status do grupo de despesas ocasionais
 export const occasionalGroupStatusEnum = pgEnum("occasional_group_status", ["open", "closed"]);
 
-// Tables
+
+// TABELAS (pgTable): Cada uma dessas constantes (users, occasionalGroups, supermarkets, etc.) representa uma tabela no seu banco de dados PostgreSQL. Para cada tabela, você define:
+// id: Uma chave primária serial (auto-incremento).
+// Nomes das colunas (text, integer, decimal, timestamp, etc.).
+// Restrições de coluna (ex: notNull(), unique(), default()).
+
+// users: tabela de usuários
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
 });
-
+// occasionalGroups: tabela de grupos de despesas ocasionais
 export const occasionalGroups = pgTable("occasional_groups", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   status: occasionalGroupStatusEnum("status").notNull().default("open"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
-
+// supermarkets: tabela de supermercados
 export const supermarkets = pgTable("supermarkets", {
   id: serial("id").primaryKey(),
   name: text("name").notNull().unique(),
 });
-
+// restaurants: tabela de restaurantes
 export const restaurants = pgTable("restaurants", {
   id: serial("id").primaryKey(),
   name: text("name").notNull().unique(),
 });
-
+// serviceTypes: tabela de tipos de serviços
 export const serviceTypes = pgTable("service_types", {
   id: serial("id").primaryKey(),
   name: text("name").notNull().unique(),
 });
-
+// leisureTypes: tabela de tipos de lazer
 export const leisureTypes = pgTable("leisure_types", {
   id: serial("id").primaryKey(),
   name: text("name").notNull().unique(),
 });
-
+// personalCareTypes: tabela de tipos de cuidados pessoais
 export const personalCareTypes = pgTable("personal_care_types", {
   id: serial("id").primaryKey(),
   name: text("name").notNull().unique(),
 });
-
+// healthTypes: tabela de tipos de saúde
 export const healthTypes = pgTable("health_types", {
   id: serial("id").primaryKey(),
   name: text("name").notNull().unique(),
 });
-
+// familyMembers: tabela de membros da família
 export const familyMembers = pgTable("family_members", {
   id: serial("id").primaryKey(),
   name: text("name").notNull().unique(),
 });
-
+// charityTypes: tabela de tipos de caridade
 export const charityTypes = pgTable("charity_types", {
   id: serial("id").primaryKey(),
   name: text("name").notNull().unique(),
 });
-
+// expenses: tabela de despesas
 export const expenses = pgTable("expenses", {
   id: serial("id").primaryKey(),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
@@ -98,7 +118,7 @@ export const expenses = pgTable("expenses", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// Relations
+// RELAÇÕES (relations): Define como as tabelas se relacionam entre si (ex: uma despesa pertence a um grupo ocasional ou a um mercado específico). Isso é crucial para fazer queries complexas que envolvem várias tabelas, como buscar despesas e mostrar o nome do mercado associado.
 export const expensesRelations = relations(expenses, ({ one }) => ({
   occasionalGroup: one(occasionalGroups, {
     fields: [expenses.occasionalGroupId],
@@ -174,7 +194,11 @@ export const charityTypesRelations = relations(charityTypes, ({ many }) => ({
   expenses: many(expenses),
 }));
 
-// Insert schemas
+
+// Insert Schemas (createInsertSchema): Utiliza o drizzle-zod para criar automaticamente esquemas de validação Zod para a inserção de dados em cada tabela. 
+// O .omit({ id: true, createdAt: true }) é usado para indicar que os campos id e createdAt (que são gerados automaticamente pelo banco de dados) 
+// não precisam ser fornecidos ao criar um novo registro.
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
 });
@@ -221,9 +245,10 @@ export const insertCharityTypeSchema = createInsertSchema(charityTypes).omit({
   id: true,
 });
 
-// Types
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = typeof users.$inferSelect;
+// TIPOS (export type): Exporta tipos TypeScript (InsertUser, User, InsertExpense, Expense, etc.) que são inferidos a partir dos esquemas Drizzle e Zod. 
+// Isso fornece forte tipagem em todo o seu aplicativo, ajudando a prevenir erros e melhorando a autocompletar no seu editor de código.
+export type InsertUser = z.infer<typeof insertUserSchema>; // Para validação de inserção
+export type User = typeof users.$inferSelect; // Para leitura da tabela
 
 export type InsertOccasionalGroup = z.infer<typeof insertOccasionalGroupSchema>;
 export type OccasionalGroup = typeof occasionalGroups.$inferSelect;

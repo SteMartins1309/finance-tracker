@@ -148,13 +148,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/supermarkets", async (req, res) => {
     try {
-      const supermarket = insertSupermarketSchema.parse(req.body);
-      const created = await storage.createSupermarket(supermarket);
-      res.json(created);
+      const { name } = req.body;
+
+      if (!name || name.trim() === "") {
+        return res.status(400).json({ error: "Name is required" });
+      }
+
+      const newSupermarket = await storage.createSupermarket({ name });
+
+      res.status(201).json(newSupermarket);
     } catch (error) {
-      res.status(400).json({ error: "Invalid supermarket data" });
+      console.error("Error creating supermarket:", error);
+      res.status(500).json({ error: "Failed to create supermarket" });
     }
   });
+
 
   app.get("/api/restaurants", async (req, res) => {
     try {

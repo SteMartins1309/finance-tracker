@@ -332,4 +332,307 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-export const storage = new DatabaseStorage();
+// Temporary in-memory storage while database connection is being resolved
+class MemoryStorage implements IStorage {
+  private expenses: Expense[] = [];
+  private occasionalGroups: OccasionalGroup[] = [];
+  private supermarkets: Supermarket[] = [
+    { id: 1, name: "Walmart" },
+    { id: 2, name: "Target" },
+    { id: 3, name: "Costco" }
+  ];
+  private restaurants: Restaurant[] = [
+    { id: 1, name: "McDonald's" },
+    { id: 2, name: "Subway" },
+    { id: 3, name: "Pizza Hut" }
+  ];
+  private serviceTypes: ServiceType[] = [
+    { id: 1, name: "Cleaning" },
+    { id: 2, name: "Plumbing" },
+    { id: 3, name: "Internet" }
+  ];
+  private leisureTypes: LeisureType[] = [
+    { id: 1, name: "Movies" },
+    { id: 2, name: "Gym" },
+    { id: 3, name: "Concerts" }
+  ];
+  private personalCareTypes: PersonalCareType[] = [
+    { id: 1, name: "Haircut" },
+    { id: 2, name: "Spa" },
+    { id: 3, name: "Dental" }
+  ];
+  private healthTypes: HealthType[] = [
+    { id: 1, name: "Doctor Visit" },
+    { id: 2, name: "Pharmacy" },
+    { id: 3, name: "Lab Tests" }
+  ];
+  private familyMembers: FamilyMember[] = [
+    { id: 1, name: "John" },
+    { id: 2, name: "Sarah" },
+    { id: 3, name: "Kids" }
+  ];
+  private charityTypes: CharityType[] = [
+    { id: 1, name: "Food Bank" },
+    { id: 2, name: "Red Cross" },
+    { id: 3, name: "Local Charity" }
+  ];
+
+  async createExpense(insertExpense: InsertExpense): Promise<Expense> {
+    const expense: Expense = {
+      id: this.expenses.length + 1,
+      amount: insertExpense.amount,
+      purchaseDate: insertExpense.purchaseDate,
+      paymentMethod: insertExpense.paymentMethod,
+      expenseType: insertExpense.expenseType,
+      routineCategory: insertExpense.routineCategory ?? null,
+      occasionalGroupId: insertExpense.occasionalGroupId || null,
+      supermarketId: insertExpense.supermarketId || null,
+      restaurantId: insertExpense.restaurantId || null,
+      serviceTypeId: insertExpense.serviceTypeId || null,
+      leisureTypeId: insertExpense.leisureTypeId || null,
+      personalCareTypeId: insertExpense.personalCareTypeId || null,
+      healthTypeId: insertExpense.healthTypeId || null,
+      familyMemberId: insertExpense.familyMemberId || null,
+      charityTypeId: insertExpense.charityTypeId || null,
+      description: insertExpense.description ?? null,
+      storeName: insertExpense.storeName ?? null,
+      startingPoint: insertExpense.startingPoint ?? null,
+      destination: insertExpense.destination ?? null,
+      transportMode: insertExpense.transportMode ?? null,
+      purchaseType: insertExpense.purchaseType ?? null,
+      createdAt: new Date()
+    };
+    this.expenses.push(expense);
+    return expense;
+  }
+
+  async getExpenses(): Promise<Expense[]> {
+    return this.expenses.sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime());
+  }
+
+  async getExpensesByMonth(year: number, month: number): Promise<Expense[]> {
+    return this.expenses.filter(expense => {
+      const date = new Date(expense.purchaseDate);
+      return date.getFullYear() === year && date.getMonth() + 1 === month;
+    });
+  }
+
+  async getExpensesByYear(year: number): Promise<Expense[]> {
+    return this.expenses.filter(expense => {
+      const date = new Date(expense.purchaseDate);
+      return date.getFullYear() === year;
+    });
+  }
+
+  async getRecentExpenses(limit: number = 5): Promise<any[]> {
+    return this.expenses
+      .sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime())
+      .slice(0, limit)
+      .map(expense => ({
+        ...expense,
+        displayName: this.supermarkets.find(s => s.id === expense.supermarketId)?.name ||
+                    this.restaurants.find(r => r.id === expense.restaurantId)?.name ||
+                    expense.storeName ||
+                    expense.description ||
+                    'Unknown',
+        category: expense.routineCategory || 'Occasional Group'
+      }));
+  }
+
+  async getMonthlyStats(): Promise<any> {
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth() + 1;
+    
+    const monthlyExpenses = await this.getExpensesByMonth(currentYear, currentMonth);
+    const yearlyExpenses = await this.getExpensesByYear(currentYear);
+    
+    const monthlyTotal = monthlyExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
+    const yearlyTotal = yearlyExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
+    const averageMonthly = yearlyTotal / currentMonth;
+    
+    return {
+      monthlyTotal,
+      yearlyTotal,
+      averageMonthly,
+      categoriesCount: 10
+    };
+  }
+
+  async getAnnualStats(year: number): Promise<any> {
+    const yearlyExpenses = await this.getExpensesByYear(year);
+    const total = yearlyExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
+    const avgMonthly = total / 12;
+    
+    const categoryTotals: { [key: string]: number } = {};
+    yearlyExpenses.forEach(expense => {
+      const category = expense.routineCategory || 'occasional';
+      categoryTotals[category] = (categoryTotals[category] || 0) + parseFloat(expense.amount);
+    });
+    
+    const topCategory = Object.keys(categoryTotals).length > 0 
+      ? Object.entries(categoryTotals).reduce((a, b) => categoryTotals[a[0]] > categoryTotals[b[0]] ? a : b)[0]
+      : 'none';
+    
+    return {
+      total,
+      avgMonthly,
+      topCategory,
+      categoryTotals
+    };
+  }
+
+  async getCategoryBreakdown(year: number, month?: number): Promise<any[]> {
+    const expenseList = month 
+      ? await this.getExpensesByMonth(year, month)
+      : await this.getExpensesByYear(year);
+    
+    const categoryTotals: { [key: string]: number } = {};
+    expenseList.forEach(expense => {
+      const category = expense.routineCategory || 'occasional';
+      categoryTotals[category] = (categoryTotals[category] || 0) + parseFloat(expense.amount);
+    });
+    
+    const totalAmount = expenseList.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
+    
+    return Object.entries(categoryTotals).map(([category, total]) => ({
+      category,
+      total,
+      percentage: totalAmount > 0 ? (total / totalAmount) * 100 : 0
+    }));
+  }
+
+  async createOccasionalGroup(insertGroup: InsertOccasionalGroup): Promise<OccasionalGroup> {
+    const group: OccasionalGroup = {
+      id: this.occasionalGroups.length + 1,
+      ...insertGroup,
+      status: 'open',
+      createdAt: new Date()
+    };
+    this.occasionalGroups.push(group);
+    return group;
+  }
+
+  async getOccasionalGroups(): Promise<OccasionalGroup[]> {
+    return this.occasionalGroups.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  async getOpenOccasionalGroups(): Promise<OccasionalGroup[]> {
+    return this.occasionalGroups.filter(group => group.status === 'open');
+  }
+
+  async updateOccasionalGroupStatus(id: number, status: "open" | "closed"): Promise<OccasionalGroup> {
+    const group = this.occasionalGroups.find(g => g.id === id);
+    if (!group) throw new Error('Group not found');
+    group.status = status;
+    return group;
+  }
+
+  async createSupermarket(insertSupermarket: InsertSupermarket): Promise<Supermarket> {
+    const supermarket: Supermarket = {
+      id: this.supermarkets.length + 1,
+      ...insertSupermarket
+    };
+    this.supermarkets.push(supermarket);
+    return supermarket;
+  }
+
+  async getSupermarkets(): Promise<Supermarket[]> {
+    return this.supermarkets.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async createRestaurant(insertRestaurant: InsertRestaurant): Promise<Restaurant> {
+    const restaurant: Restaurant = {
+      id: this.restaurants.length + 1,
+      ...insertRestaurant
+    };
+    this.restaurants.push(restaurant);
+    return restaurant;
+  }
+
+  async getRestaurants(): Promise<Restaurant[]> {
+    return this.restaurants.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async createServiceType(insertServiceType: InsertServiceType): Promise<ServiceType> {
+    const serviceType: ServiceType = {
+      id: this.serviceTypes.length + 1,
+      ...insertServiceType
+    };
+    this.serviceTypes.push(serviceType);
+    return serviceType;
+  }
+
+  async getServiceTypes(): Promise<ServiceType[]> {
+    return this.serviceTypes.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async createLeisureType(insertLeisureType: InsertLeisureType): Promise<LeisureType> {
+    const leisureType: LeisureType = {
+      id: this.leisureTypes.length + 1,
+      ...insertLeisureType
+    };
+    this.leisureTypes.push(leisureType);
+    return leisureType;
+  }
+
+  async getLeisureTypes(): Promise<LeisureType[]> {
+    return this.leisureTypes.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async createPersonalCareType(insertPersonalCareType: InsertPersonalCareType): Promise<PersonalCareType> {
+    const personalCareType: PersonalCareType = {
+      id: this.personalCareTypes.length + 1,
+      ...insertPersonalCareType
+    };
+    this.personalCareTypes.push(personalCareType);
+    return personalCareType;
+  }
+
+  async getPersonalCareTypes(): Promise<PersonalCareType[]> {
+    return this.personalCareTypes.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async createHealthType(insertHealthType: InsertHealthType): Promise<HealthType> {
+    const healthType: HealthType = {
+      id: this.healthTypes.length + 1,
+      ...insertHealthType
+    };
+    this.healthTypes.push(healthType);
+    return healthType;
+  }
+
+  async getHealthTypes(): Promise<HealthType[]> {
+    return this.healthTypes.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async createFamilyMember(insertFamilyMember: InsertFamilyMember): Promise<FamilyMember> {
+    const familyMember: FamilyMember = {
+      id: this.familyMembers.length + 1,
+      ...insertFamilyMember
+    };
+    this.familyMembers.push(familyMember);
+    return familyMember;
+  }
+
+  async getFamilyMembers(): Promise<FamilyMember[]> {
+    return this.familyMembers.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async createCharityType(insertCharityType: InsertCharityType): Promise<CharityType> {
+    const charityType: CharityType = {
+      id: this.charityTypes.length + 1,
+      ...insertCharityType
+    };
+    this.charityTypes.push(charityType);
+    return charityType;
+  }
+
+  async getCharityTypes(): Promise<CharityType[]> {
+    return this.charityTypes.sort((a, b) => a.name.localeCompare(b.name));
+  }
+}
+
+// Use memory storage for now while database connection is being resolved
+export const storage = new MemoryStorage();
+// export const storage = new DatabaseStorage();

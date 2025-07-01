@@ -53,15 +53,15 @@ export function Sidebar() {
             const Icon = item.icon;
             return (
               <Link key={item.href} href={item.href}>
-                <a className={cn(
-                  "flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors",
+                <div className={cn(
+                  "flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors cursor-pointer",
                   item.active 
                     ? "bg-blue-50 text-primary border-r-3 border-primary" 
                     : "text-text-secondary hover:bg-gray-50"
                 )}>
                   <Icon className="mr-3 h-4 w-4" />
                   {item.label}
-                </a>
+                </div>
               </Link>
             );
           })}
