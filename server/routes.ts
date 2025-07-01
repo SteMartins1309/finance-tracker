@@ -1,8 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { 
-  insertExpenseSchema, 
+import {
+  insertExpenseSchema,
   insertOccasionalGroupSchema,
   insertSupermarketSchema,
   insertRestaurantSchema,
@@ -11,18 +11,30 @@ import {
   insertPersonalCareTypeSchema,
   insertHealthTypeSchema,
   insertFamilyMemberSchema,
-  insertCharityTypeSchema
+  insertCharityTypeSchema,
 } from "@shared/schema";
+import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Expenses routes
   app.post("/api/expenses", async (req, res) => {
     try {
-      const expense = insertExpenseSchema.parse(req.body);
+      const expense = insertExpenseSchema.parse(req.body); // A validação acontece aqui
       const created = await storage.createExpense(expense);
       res.json(created);
     } catch (error) {
-      res.status(400).json({ error: "Invalid expense data" });
+      // --- INÍCIO DA ALTERAÇÃO ---
+      if (error instanceof z.ZodError) {
+        // Se o erro for de validação Zod, retorne os detalhes
+        console.error("Zod Validation Error for expense:", error.issues); // Log no servidor
+        return res.status(400).json({ errors: error.issues }); // Retorna os detalhes do erro para o frontend
+      }
+      // Para outros tipos de erro, log e retorne uma mensagem genérica de erro do servidor
+      console.error("Server error adding expense:", error);
+      res
+        .status(500)
+        .json({ error: "Failed to add expense due to server error" });
+      // --- FIM DA ALTERAÇÃO ---
     }
   });
 
@@ -88,7 +100,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/stats/category-breakdown/:year", async (req, res) => {
     try {
       const year = parseInt(req.params.year);
-      const month = req.query.month ? parseInt(req.query.month as string) : undefined;
+      const month = req.query.month
+        ? parseInt(req.query.month as string)
+        : undefined;
       const breakdown = await storage.getCategoryBreakdown(year, month);
       res.json(breakdown);
     } catch (error) {
@@ -154,7 +168,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Name is required" });
       }
 
-      const newSupermarket = await storage.createSupermarket({ name });
+      const newSupermarket = await storage.addSupermarket({ name });
 
       res.status(201).json(newSupermarket);
     } catch (error) {
@@ -162,7 +176,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to create supermarket" });
     }
   });
-
 
   app.get("/api/restaurants", async (req, res) => {
     try {

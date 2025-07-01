@@ -41,7 +41,6 @@ import { Calendar, Star, Plus } from "lucide-react";
 
 import { AddSupermarketModal } from "./AddSupermarketModal";
 
-
 // SCHEMA: Define o esquema de validação para o formulário de adição de despesa usando a biblioteca Zod.
 // Define o que o formulário espera: campos obrigatórios, tipos, enums.
 // Campos como amount, purchaseDate, expenseType, etc., são validados aqui.
@@ -102,7 +101,6 @@ interface AddExpenseModalProps {
 // open: controla se o modal está aberto.
 // onOpenChange: função para abrir/fechar o modal.
 export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
-
   const [showAddSupermarketModal, setShowAddSupermarketModal] = useState(false);
   // Estados locais para gerenciar o estado do formulário e os diálogos de adição de novos itens
   const [newItemDialogs, setNewItemDialogs] = useState<{
@@ -213,7 +211,7 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
   const onSubmit = (data: ExpenseFormData) => {
     const expenseData = {
       amount: data.amount,
-      purchaseDate: new Date(data.purchaseDate).toISOString(),
+      purchaseDate: new Date("2023-10-06T00:00:00Z"),
       paymentMethod: data.paymentMethod,
       expenseType: data.expenseType,
       routineCategory:
@@ -476,8 +474,10 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
                         </FormItem>
                       )}
                     />
-                    <AddNewButton onClick={() => setShowAddSupermarketModal(true)} label="Add New" />
-
+                    <AddNewButton
+                      onClick={() => setShowAddSupermarketModal(true)}
+                      label="Add New"
+                    />
                   </div>
                 )}
 
@@ -733,8 +733,10 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
           </form>
         </Form>
 
-        <AddSupermarketModal open={showAddSupermarketModal} onOpenChange={setShowAddSupermarketModal} />
-
+        <AddSupermarketModal
+          open={showAddSupermarketModal}
+          onOpenChange={setShowAddSupermarketModal}
+        />
       </DialogContent>
     </Dialog>
   );

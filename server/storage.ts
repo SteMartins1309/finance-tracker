@@ -1,6 +1,6 @@
-import { 
-  expenses, 
-  occasionalGroups, 
+import {
+  expenses,
+  occasionalGroups,
   supermarkets,
   restaurants,
   serviceTypes,
@@ -9,7 +9,7 @@ import {
   healthTypes,
   familyMembers,
   charityTypes,
-  type Expense, 
+  type Expense,
   type InsertExpense,
   type OccasionalGroup,
   type InsertOccasionalGroup,
@@ -28,7 +28,7 @@ import {
   type FamilyMember,
   type InsertFamilyMember,
   type CharityType,
-  type InsertCharityType
+  type InsertCharityType,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, sql, desc, and, gte, lte } from "drizzle-orm";
@@ -48,10 +48,13 @@ export interface IStorage {
   createOccasionalGroup(group: InsertOccasionalGroup): Promise<OccasionalGroup>;
   getOccasionalGroups(): Promise<OccasionalGroup[]>;
   getOpenOccasionalGroups(): Promise<OccasionalGroup[]>;
-  updateOccasionalGroupStatus(id: number, status: "open" | "closed"): Promise<OccasionalGroup>;
+  updateOccasionalGroupStatus(
+    id: number,
+    status: "open" | "closed",
+  ): Promise<OccasionalGroup>;
 
   // Category management
-  createSupermarket(supermarket: InsertSupermarket): Promise<Supermarket>;
+  addSupermarket(supermarket: InsertSupermarket): Promise<Supermarket>;
   getSupermarkets(): Promise<Supermarket[]>;
   createRestaurant(restaurant: InsertRestaurant): Promise<Restaurant>;
   getRestaurants(): Promise<Restaurant[]>;
@@ -59,7 +62,9 @@ export interface IStorage {
   getServiceTypes(): Promise<ServiceType[]>;
   createLeisureType(leisureType: InsertLeisureType): Promise<LeisureType>;
   getLeisureTypes(): Promise<LeisureType[]>;
-  createPersonalCareType(personalCareType: InsertPersonalCareType): Promise<PersonalCareType>;
+  createPersonalCareType(
+    personalCareType: InsertPersonalCareType,
+  ): Promise<PersonalCareType>;
   getPersonalCareTypes(): Promise<PersonalCareType[]>;
   createHealthType(healthType: InsertHealthType): Promise<HealthType>;
   getHealthTypes(): Promise<HealthType[]>;
@@ -80,21 +85,24 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getExpenses(): Promise<Expense[]> {
-    return await db.select().from(expenses).orderBy(desc(expenses.purchaseDate));
+    return await db
+      .select()
+      .from(expenses)
+      .orderBy(desc(expenses.purchaseDate));
   }
 
   async getExpensesByMonth(year: number, month: number): Promise<Expense[]> {
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0);
-    
+
     return await db
       .select()
       .from(expenses)
       .where(
         and(
           gte(expenses.purchaseDate, startDate),
-          lte(expenses.purchaseDate, endDate)
-        )
+          lte(expenses.purchaseDate, endDate),
+        ),
       )
       .orderBy(desc(expenses.purchaseDate));
   }
@@ -102,15 +110,15 @@ export class DatabaseStorage implements IStorage {
   async getExpensesByYear(year: number): Promise<Expense[]> {
     const startDate = new Date(year, 0, 1);
     const endDate = new Date(year, 11, 31);
-    
+
     return await db
       .select()
       .from(expenses)
       .where(
         and(
           gte(expenses.purchaseDate, startDate),
-          lte(expenses.purchaseDate, endDate)
-        )
+          lte(expenses.purchaseDate, endDate),
+        ),
       )
       .orderBy(desc(expenses.purchaseDate));
   }
@@ -126,19 +134,27 @@ export class DatabaseStorage implements IStorage {
         storeName: expenses.storeName,
         supermarket: supermarkets.name,
         restaurant: restaurants.name,
-        occasionalGroup: occasionalGroups.name
+        occasionalGroup: occasionalGroups.name,
       })
       .from(expenses)
       .leftJoin(supermarkets, eq(expenses.supermarketId, supermarkets.id))
       .leftJoin(restaurants, eq(expenses.restaurantId, restaurants.id))
-      .leftJoin(occasionalGroups, eq(expenses.occasionalGroupId, occasionalGroups.id))
+      .leftJoin(
+        occasionalGroups,
+        eq(expenses.occasionalGroupId, occasionalGroups.id),
+      )
       .orderBy(desc(expenses.purchaseDate))
       .limit(limit);
 
-    return result.map(expense => ({
+    return result.map((expense) => ({
       ...expense,
-      displayName: expense.supermarket || expense.restaurant || expense.storeName || expense.occasionalGroup || 'Unknown',
-      category: expense.routineCategory || 'Occasional Group'
+      displayName:
+        expense.supermarket ||
+        expense.restaurant ||
+        expense.storeName ||
+        expense.occasionalGroup ||
+        "Unknown",
+      category: expense.routineCategory || "Occasional Group",
     }));
   }
 
@@ -146,66 +162,85 @@ export class DatabaseStorage implements IStorage {
     const currentDate = new Date();
     const currentYear = currentDate.getFullYear();
     const currentMonth = currentDate.getMonth() + 1;
-    
-    const monthlyExpenses = await this.getExpensesByMonth(currentYear, currentMonth);
+
+    const monthlyExpenses = await this.getExpensesByMonth(
+      currentYear,
+      currentMonth,
+    );
     const yearlyExpenses = await this.getExpensesByYear(currentYear);
-    
-    const monthlyTotal = monthlyExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
-    const yearlyTotal = yearlyExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
+
+    const monthlyTotal = monthlyExpenses.reduce(
+      (sum, exp) => sum + parseFloat(exp.amount),
+      0,
+    );
+    const yearlyTotal = yearlyExpenses.reduce(
+      (sum, exp) => sum + parseFloat(exp.amount),
+      0,
+    );
     const averageMonthly = yearlyTotal / currentMonth;
-    
+
     return {
       monthlyTotal,
       yearlyTotal,
       averageMonthly,
-      categoriesCount: 10 // Static for now, could be dynamic
+      categoriesCount: 10, // Static for now, could be dynamic
     };
   }
 
   async getAnnualStats(year: number): Promise<any> {
     const yearlyExpenses = await this.getExpensesByYear(year);
-    const total = yearlyExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
+    const total = yearlyExpenses.reduce(
+      (sum, exp) => sum + parseFloat(exp.amount),
+      0,
+    );
     const avgMonthly = total / 12;
-    
+
     // Get category totals
     const categoryTotals: { [key: string]: number } = {};
-    yearlyExpenses.forEach(expense => {
-      const category = expense.routineCategory || 'occasional';
-      categoryTotals[category] = (categoryTotals[category] || 0) + parseFloat(expense.amount);
+    yearlyExpenses.forEach((expense) => {
+      const category = expense.routineCategory || "occasional";
+      categoryTotals[category] =
+        (categoryTotals[category] || 0) + parseFloat(expense.amount);
     });
-    
-    const topCategory = Object.entries(categoryTotals).reduce((a, b) => 
-      categoryTotals[a[0]] > categoryTotals[b[0]] ? a : b
+
+    const topCategory = Object.entries(categoryTotals).reduce((a, b) =>
+      categoryTotals[a[0]] > categoryTotals[b[0]] ? a : b,
     )[0];
-    
+
     return {
       total,
       avgMonthly,
       topCategory,
-      categoryTotals
+      categoryTotals,
     };
   }
 
   async getCategoryBreakdown(year: number, month?: number): Promise<any[]> {
-    const expenseList = month 
+    const expenseList = month
       ? await this.getExpensesByMonth(year, month)
       : await this.getExpensesByYear(year);
-    
+
     const categoryTotals: { [key: string]: number } = {};
-    expenseList.forEach(expense => {
-      const category = expense.routineCategory || 'occasional';
-      categoryTotals[category] = (categoryTotals[category] || 0) + parseFloat(expense.amount);
+    expenseList.forEach((expense) => {
+      const category = expense.routineCategory || "occasional";
+      categoryTotals[category] =
+        (categoryTotals[category] || 0) + parseFloat(expense.amount);
     });
-    
+
     return Object.entries(categoryTotals).map(([category, total]) => ({
       category,
       total,
-      percentage: (total / expenseList.reduce((sum, exp) => sum + parseFloat(exp.amount), 0)) * 100
+      percentage:
+        (total /
+          expenseList.reduce((sum, exp) => sum + parseFloat(exp.amount), 0)) *
+        100,
     }));
   }
 
   // Occasional Groups
-  async createOccasionalGroup(insertGroup: InsertOccasionalGroup): Promise<OccasionalGroup> {
+  async createOccasionalGroup(
+    insertGroup: InsertOccasionalGroup,
+  ): Promise<OccasionalGroup> {
     const [group] = await db
       .insert(occasionalGroups)
       .values(insertGroup)
@@ -214,7 +249,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getOccasionalGroups(): Promise<OccasionalGroup[]> {
-    return await db.select().from(occasionalGroups).orderBy(desc(occasionalGroups.createdAt));
+    return await db
+      .select()
+      .from(occasionalGroups)
+      .orderBy(desc(occasionalGroups.createdAt));
   }
 
   async getOpenOccasionalGroups(): Promise<OccasionalGroup[]> {
@@ -225,7 +263,10 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(occasionalGroups.createdAt));
   }
 
-  async updateOccasionalGroupStatus(id: number, status: "open" | "closed"): Promise<OccasionalGroup> {
+  async updateOccasionalGroupStatus(
+    id: number,
+    status: "open" | "closed",
+  ): Promise<OccasionalGroup> {
     const [group] = await db
       .update(occasionalGroups)
       .set({ status })
@@ -235,7 +276,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Category management methods
-  async createSupermarket(insertSupermarket: InsertSupermarket): Promise<Supermarket> {
+  async addSupermarket(
+    insertSupermarket: InsertSupermarket,
+  ): Promise<Supermarket> {
     const [supermarket] = await db
       .insert(supermarkets)
       .values(insertSupermarket)
@@ -247,7 +290,9 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(supermarkets).orderBy(supermarkets.name);
   }
 
-  async createRestaurant(insertRestaurant: InsertRestaurant): Promise<Restaurant> {
+  async createRestaurant(
+    insertRestaurant: InsertRestaurant,
+  ): Promise<Restaurant> {
     const [restaurant] = await db
       .insert(restaurants)
       .values(insertRestaurant)
@@ -259,7 +304,9 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(restaurants).orderBy(restaurants.name);
   }
 
-  async createServiceType(insertServiceType: InsertServiceType): Promise<ServiceType> {
+  async createServiceType(
+    insertServiceType: InsertServiceType,
+  ): Promise<ServiceType> {
     const [serviceType] = await db
       .insert(serviceTypes)
       .values(insertServiceType)
@@ -271,7 +318,9 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(serviceTypes).orderBy(serviceTypes.name);
   }
 
-  async createLeisureType(insertLeisureType: InsertLeisureType): Promise<LeisureType> {
+  async createLeisureType(
+    insertLeisureType: InsertLeisureType,
+  ): Promise<LeisureType> {
     const [leisureType] = await db
       .insert(leisureTypes)
       .values(insertLeisureType)
@@ -283,7 +332,9 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(leisureTypes).orderBy(leisureTypes.name);
   }
 
-  async createPersonalCareType(insertPersonalCareType: InsertPersonalCareType): Promise<PersonalCareType> {
+  async createPersonalCareType(
+    insertPersonalCareType: InsertPersonalCareType,
+  ): Promise<PersonalCareType> {
     const [personalCareType] = await db
       .insert(personalCareTypes)
       .values(insertPersonalCareType)
@@ -292,10 +343,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPersonalCareTypes(): Promise<PersonalCareType[]> {
-    return await db.select().from(personalCareTypes).orderBy(personalCareTypes.name);
+    return await db
+      .select()
+      .from(personalCareTypes)
+      .orderBy(personalCareTypes.name);
   }
 
-  async createHealthType(insertHealthType: InsertHealthType): Promise<HealthType> {
+  async createHealthType(
+    insertHealthType: InsertHealthType,
+  ): Promise<HealthType> {
     const [healthType] = await db
       .insert(healthTypes)
       .values(insertHealthType)
@@ -307,7 +363,9 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(healthTypes).orderBy(healthTypes.name);
   }
 
-  async createFamilyMember(insertFamilyMember: InsertFamilyMember): Promise<FamilyMember> {
+  async createFamilyMember(
+    insertFamilyMember: InsertFamilyMember,
+  ): Promise<FamilyMember> {
     const [familyMember] = await db
       .insert(familyMembers)
       .values(insertFamilyMember)
@@ -319,7 +377,9 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(familyMembers).orderBy(familyMembers.name);
   }
 
-  async createCharityType(insertCharityType: InsertCharityType): Promise<CharityType> {
+  async createCharityType(
+    insertCharityType: InsertCharityType,
+  ): Promise<CharityType> {
     const [charityType] = await db
       .insert(charityTypes)
       .values(insertCharityType)
@@ -339,42 +399,42 @@ class MemoryStorage implements IStorage {
   private supermarkets: Supermarket[] = [
     { id: 1, name: "Walmart" },
     { id: 2, name: "Target" },
-    { id: 3, name: "Costco" }
+    { id: 3, name: "Costco" },
   ];
   private restaurants: Restaurant[] = [
     { id: 1, name: "McDonald's" },
     { id: 2, name: "Subway" },
-    { id: 3, name: "Pizza Hut" }
+    { id: 3, name: "Pizza Hut" },
   ];
   private serviceTypes: ServiceType[] = [
     { id: 1, name: "Cleaning" },
     { id: 2, name: "Plumbing" },
-    { id: 3, name: "Internet" }
+    { id: 3, name: "Internet" },
   ];
   private leisureTypes: LeisureType[] = [
     { id: 1, name: "Movies" },
     { id: 2, name: "Gym" },
-    { id: 3, name: "Concerts" }
+    { id: 3, name: "Concerts" },
   ];
   private personalCareTypes: PersonalCareType[] = [
     { id: 1, name: "Haircut" },
     { id: 2, name: "Spa" },
-    { id: 3, name: "Dental" }
+    { id: 3, name: "Dental" },
   ];
   private healthTypes: HealthType[] = [
     { id: 1, name: "Doctor Visit" },
     { id: 2, name: "Pharmacy" },
-    { id: 3, name: "Lab Tests" }
+    { id: 3, name: "Lab Tests" },
   ];
   private familyMembers: FamilyMember[] = [
     { id: 1, name: "John" },
     { id: 2, name: "Sarah" },
-    { id: 3, name: "Kids" }
+    { id: 3, name: "Kids" },
   ];
   private charityTypes: CharityType[] = [
     { id: 1, name: "Food Bank" },
     { id: 2, name: "Red Cross" },
-    { id: 3, name: "Local Charity" }
+    { id: 3, name: "Local Charity" },
   ];
 
   async createExpense(insertExpense: InsertExpense): Promise<Expense> {
@@ -400,25 +460,28 @@ class MemoryStorage implements IStorage {
       destination: insertExpense.destination ?? null,
       transportMode: insertExpense.transportMode ?? null,
       purchaseType: insertExpense.purchaseType ?? null,
-      createdAt: new Date()
+      createdAt: new Date(),
     };
     this.expenses.push(expense);
     return expense;
   }
 
   async getExpenses(): Promise<Expense[]> {
-    return this.expenses.sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime());
+    return this.expenses.sort(
+      (a, b) =>
+        new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime(),
+    );
   }
 
   async getExpensesByMonth(year: number, month: number): Promise<Expense[]> {
-    return this.expenses.filter(expense => {
+    return this.expenses.filter((expense) => {
       const date = new Date(expense.purchaseDate);
       return date.getFullYear() === year && date.getMonth() + 1 === month;
     });
   }
 
   async getExpensesByYear(year: number): Promise<Expense[]> {
-    return this.expenses.filter(expense => {
+    return this.expenses.filter((expense) => {
       const date = new Date(expense.purchaseDate);
       return date.getFullYear() === year;
     });
@@ -426,16 +489,21 @@ class MemoryStorage implements IStorage {
 
   async getRecentExpenses(limit: number = 5): Promise<any[]> {
     return this.expenses
-      .sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime())
+      .sort(
+        (a, b) =>
+          new Date(b.purchaseDate).getTime() -
+          new Date(a.purchaseDate).getTime(),
+      )
       .slice(0, limit)
-      .map(expense => ({
+      .map((expense) => ({
         ...expense,
-        displayName: this.supermarkets.find(s => s.id === expense.supermarketId)?.name ||
-                    this.restaurants.find(r => r.id === expense.restaurantId)?.name ||
-                    expense.storeName ||
-                    expense.description ||
-                    'Unknown',
-        category: expense.routineCategory || 'Occasional Group'
+        displayName:
+          this.supermarkets.find((s) => s.id === expense.supermarketId)?.name ||
+          this.restaurants.find((r) => r.id === expense.restaurantId)?.name ||
+          expense.storeName ||
+          expense.description ||
+          "Unknown",
+        category: expense.routineCategory || "Occasional Group",
       }));
   }
 
@@ -443,95 +511,125 @@ class MemoryStorage implements IStorage {
     const currentDate = new Date();
     const currentYear = currentDate.getFullYear();
     const currentMonth = currentDate.getMonth() + 1;
-    
-    const monthlyExpenses = await this.getExpensesByMonth(currentYear, currentMonth);
+
+    const monthlyExpenses = await this.getExpensesByMonth(
+      currentYear,
+      currentMonth,
+    );
     const yearlyExpenses = await this.getExpensesByYear(currentYear);
-    
-    const monthlyTotal = monthlyExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
-    const yearlyTotal = yearlyExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
+
+    const monthlyTotal = monthlyExpenses.reduce(
+      (sum, exp) => sum + parseFloat(exp.amount),
+      0,
+    );
+    const yearlyTotal = yearlyExpenses.reduce(
+      (sum, exp) => sum + parseFloat(exp.amount),
+      0,
+    );
     const averageMonthly = yearlyTotal / currentMonth;
-    
+
     return {
       monthlyTotal,
       yearlyTotal,
       averageMonthly,
-      categoriesCount: 10
+      categoriesCount: 10,
     };
   }
 
   async getAnnualStats(year: number): Promise<any> {
     const yearlyExpenses = await this.getExpensesByYear(year);
-    const total = yearlyExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
+    const total = yearlyExpenses.reduce(
+      (sum, exp) => sum + parseFloat(exp.amount),
+      0,
+    );
     const avgMonthly = total / 12;
-    
+
     const categoryTotals: { [key: string]: number } = {};
-    yearlyExpenses.forEach(expense => {
-      const category = expense.routineCategory || 'occasional';
-      categoryTotals[category] = (categoryTotals[category] || 0) + parseFloat(expense.amount);
+    yearlyExpenses.forEach((expense) => {
+      const category = expense.routineCategory || "occasional";
+      categoryTotals[category] =
+        (categoryTotals[category] || 0) + parseFloat(expense.amount);
     });
-    
-    const topCategory = Object.keys(categoryTotals).length > 0 
-      ? Object.entries(categoryTotals).reduce((a, b) => categoryTotals[a[0]] > categoryTotals[b[0]] ? a : b)[0]
-      : 'none';
-    
+
+    const topCategory =
+      Object.keys(categoryTotals).length > 0
+        ? Object.entries(categoryTotals).reduce((a, b) =>
+            categoryTotals[a[0]] > categoryTotals[b[0]] ? a : b,
+          )[0]
+        : "none";
+
     return {
       total,
       avgMonthly,
       topCategory,
-      categoryTotals
+      categoryTotals,
     };
   }
 
   async getCategoryBreakdown(year: number, month?: number): Promise<any[]> {
-    const expenseList = month 
+    const expenseList = month
       ? await this.getExpensesByMonth(year, month)
       : await this.getExpensesByYear(year);
-    
+
     const categoryTotals: { [key: string]: number } = {};
-    expenseList.forEach(expense => {
-      const category = expense.routineCategory || 'occasional';
-      categoryTotals[category] = (categoryTotals[category] || 0) + parseFloat(expense.amount);
+    expenseList.forEach((expense) => {
+      const category = expense.routineCategory || "occasional";
+      categoryTotals[category] =
+        (categoryTotals[category] || 0) + parseFloat(expense.amount);
     });
-    
-    const totalAmount = expenseList.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
-    
+
+    const totalAmount = expenseList.reduce(
+      (sum, exp) => sum + parseFloat(exp.amount),
+      0,
+    );
+
     return Object.entries(categoryTotals).map(([category, total]) => ({
       category,
       total,
-      percentage: totalAmount > 0 ? (total / totalAmount) * 100 : 0
+      percentage: totalAmount > 0 ? (total / totalAmount) * 100 : 0,
     }));
   }
 
-  async createOccasionalGroup(insertGroup: InsertOccasionalGroup): Promise<OccasionalGroup> {
+  async createOccasionalGroup(
+    insertGroup: InsertOccasionalGroup,
+  ): Promise<OccasionalGroup> {
     const group: OccasionalGroup = {
       id: this.occasionalGroups.length + 1,
       ...insertGroup,
-      status: 'open',
-      createdAt: new Date()
+      status: "open",
+      createdAt: new Date(),
     };
     this.occasionalGroups.push(group);
     return group;
   }
 
   async getOccasionalGroups(): Promise<OccasionalGroup[]> {
-    return this.occasionalGroups.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return this.occasionalGroups.sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
   }
 
   async getOpenOccasionalGroups(): Promise<OccasionalGroup[]> {
-    return this.occasionalGroups.filter(group => group.status === 'open');
+    return this.occasionalGroups.filter((group) => group.status === "open");
   }
 
-  async updateOccasionalGroupStatus(id: number, status: "open" | "closed"): Promise<OccasionalGroup> {
-    const group = this.occasionalGroups.find(g => g.id === id);
-    if (!group) throw new Error('Group not found');
+  async updateOccasionalGroupStatus(
+    id: number,
+    status: "open" | "closed",
+  ): Promise<OccasionalGroup> {
+    const group = this.occasionalGroups.find((g) => g.id === id);
+    if (!group) throw new Error("Group not found");
     group.status = status;
     return group;
   }
 
-  async createSupermarket(insertSupermarket: InsertSupermarket): Promise<Supermarket> {
+  async addSupermarket(
+    insertSupermarket: InsertSupermarket,
+  ): Promise<Supermarket> {
     const supermarket: Supermarket = {
       id: this.supermarkets.length + 1,
-      ...insertSupermarket
+      ...insertSupermarket,
     };
     this.supermarkets.push(supermarket);
     return supermarket;
@@ -541,10 +639,12 @@ class MemoryStorage implements IStorage {
     return this.supermarkets.sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  async createRestaurant(insertRestaurant: InsertRestaurant): Promise<Restaurant> {
+  async createRestaurant(
+    insertRestaurant: InsertRestaurant,
+  ): Promise<Restaurant> {
     const restaurant: Restaurant = {
       id: this.restaurants.length + 1,
-      ...insertRestaurant
+      ...insertRestaurant,
     };
     this.restaurants.push(restaurant);
     return restaurant;
@@ -554,10 +654,12 @@ class MemoryStorage implements IStorage {
     return this.restaurants.sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  async createServiceType(insertServiceType: InsertServiceType): Promise<ServiceType> {
+  async createServiceType(
+    insertServiceType: InsertServiceType,
+  ): Promise<ServiceType> {
     const serviceType: ServiceType = {
       id: this.serviceTypes.length + 1,
-      ...insertServiceType
+      ...insertServiceType,
     };
     this.serviceTypes.push(serviceType);
     return serviceType;
@@ -567,10 +669,12 @@ class MemoryStorage implements IStorage {
     return this.serviceTypes.sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  async createLeisureType(insertLeisureType: InsertLeisureType): Promise<LeisureType> {
+  async createLeisureType(
+    insertLeisureType: InsertLeisureType,
+  ): Promise<LeisureType> {
     const leisureType: LeisureType = {
       id: this.leisureTypes.length + 1,
-      ...insertLeisureType
+      ...insertLeisureType,
     };
     this.leisureTypes.push(leisureType);
     return leisureType;
@@ -580,10 +684,12 @@ class MemoryStorage implements IStorage {
     return this.leisureTypes.sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  async createPersonalCareType(insertPersonalCareType: InsertPersonalCareType): Promise<PersonalCareType> {
+  async createPersonalCareType(
+    insertPersonalCareType: InsertPersonalCareType,
+  ): Promise<PersonalCareType> {
     const personalCareType: PersonalCareType = {
       id: this.personalCareTypes.length + 1,
-      ...insertPersonalCareType
+      ...insertPersonalCareType,
     };
     this.personalCareTypes.push(personalCareType);
     return personalCareType;
@@ -593,10 +699,12 @@ class MemoryStorage implements IStorage {
     return this.personalCareTypes.sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  async createHealthType(insertHealthType: InsertHealthType): Promise<HealthType> {
+  async createHealthType(
+    insertHealthType: InsertHealthType,
+  ): Promise<HealthType> {
     const healthType: HealthType = {
       id: this.healthTypes.length + 1,
-      ...insertHealthType
+      ...insertHealthType,
     };
     this.healthTypes.push(healthType);
     return healthType;
@@ -606,10 +714,12 @@ class MemoryStorage implements IStorage {
     return this.healthTypes.sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  async createFamilyMember(insertFamilyMember: InsertFamilyMember): Promise<FamilyMember> {
+  async createFamilyMember(
+    insertFamilyMember: InsertFamilyMember,
+  ): Promise<FamilyMember> {
     const familyMember: FamilyMember = {
       id: this.familyMembers.length + 1,
-      ...insertFamilyMember
+      ...insertFamilyMember,
     };
     this.familyMembers.push(familyMember);
     return familyMember;
@@ -619,10 +729,12 @@ class MemoryStorage implements IStorage {
     return this.familyMembers.sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  async createCharityType(insertCharityType: InsertCharityType): Promise<CharityType> {
+  async createCharityType(
+    insertCharityType: InsertCharityType,
+  ): Promise<CharityType> {
     const charityType: CharityType = {
       id: this.charityTypes.length + 1,
-      ...insertCharityType
+      ...insertCharityType,
     };
     this.charityTypes.push(charityType);
     return charityType;
