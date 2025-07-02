@@ -64,6 +64,9 @@ export const occasionalGroupStatusEnum = pgEnum("occasional_group_status", [
   "closed",
 ]);
 
+// Utilizada na subcategoria 'food'
+export const occasionTypeEnum = pgEnum("occasion_type", ["normal", "special"]);
+
 // TABELAS (pgTable): Cada uma dessas constantes (users, occasionalGroups, supermarkets, etc.) representa uma tabela no seu banco de dados PostgreSQL. Para cada tabela, você define:
 // id: Uma chave primária serial (auto-incremento).
 // Nomes das colunas (text, integer, decimal, timestamp, etc.).
@@ -89,11 +92,12 @@ export const supermarkets = pgTable("supermarkets", {
   name: text("name").notNull().unique(),
 });
 
-// restaurants: tabela de restaurantes
+// (PRONTO) restaurants: tabela de restaurantes
 export const restaurants = pgTable("restaurants", {
   id: serial("id").primaryKey(),
   name: text("name").notNull().unique(),
 });
+
 // serviceTypes: tabela de tipos de serviços
 export const serviceTypes = pgTable("service_types", {
   id: serial("id").primaryKey(),
@@ -124,6 +128,7 @@ export const charityTypes = pgTable("charity_types", {
   id: serial("id").primaryKey(),
   name: text("name").notNull().unique(),
 });
+
 // expenses: tabela de despesas
 export const expenses = pgTable("expenses", {
   id: serial("id").primaryKey(),
@@ -134,10 +139,16 @@ export const expenses = pgTable("expenses", {
   routineCategory: routineCategoryEnum("routine_category"),
   occasionalGroupId: integer("occasional_group_id"),
 
-  // Cada campo é uma chave estrangeira (foreign keys) que referencia uma das tabelas de categorias específicas
-  supermarketId: integer("supermarket_id"),
+  // Cada campo é uma chave estrangeira (foreign keys) que referencia      uma das tabelas de categorias específicas
 
+  // Para a subcategoria 'supermarket'
+  supermarketId: integer("supermarket_id"),
+  // Para a subcategoria 'food'
   restaurantId: integer("restaurant_id"),
+  foodOccasionType: occasionTypeEnum("occasion_type").default("normal"),
+  specialOccasionDescription: text("special_occasion_description"),
+  foodPurchaseType: purchaseTypeEnum("food_purchase_type"),
+
   serviceTypeId: integer("service_type_id"),
   leisureTypeId: integer("leisure_type_id"),
   personalCareTypeId: integer("personal_care_type_id"),
@@ -168,6 +179,7 @@ export const expensesRelations = relations(expenses, ({ one }) => ({
     references: [supermarkets.id],
   }),
   restaurant: one(restaurants, {
+    // Define que cada despesa pode estar associada a um restaurante específico
     fields: [expenses.restaurantId],
     references: [restaurants.id],
   }),
@@ -209,6 +221,7 @@ export const supermarketsRelations = relations(supermarkets, ({ many }) => ({
   expenses: many(expenses),
 }));
 
+// Define que um restaurante pode ter várias despesas associadas
 export const restaurantsRelations = relations(restaurants, ({ many }) => ({
   expenses: many(expenses),
 }));
@@ -269,6 +282,7 @@ export const insertSupermarketSchema = createInsertSchema(supermarkets).omit({
   id: true,
 });
 
+// Define esquema de inserção para a tabela de restaurantes
 export const insertRestaurantSchema = createInsertSchema(restaurants).omit({
   id: true,
 });
@@ -314,6 +328,7 @@ export type Expense = typeof expenses.$inferSelect;
 export type InsertSupermarket = z.infer<typeof insertSupermarketSchema>;
 export type Supermarket = typeof supermarkets.$inferSelect;
 
+// Define o tipo TypeScript para a inserção e leitura de restaurantes
 export type InsertRestaurant = z.infer<typeof insertRestaurantSchema>;
 export type Restaurant = typeof restaurants.$inferSelect;
 

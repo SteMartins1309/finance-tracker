@@ -4,7 +4,9 @@ import { storage } from "./storage";
 import {
   insertExpenseSchema,
   insertOccasionalGroupSchema,
-  insertSupermarketSchema,
+  
+  insertSupermarketSchema,  // já visto
+  
   insertRestaurantSchema,
   insertServiceTypeSchema,
   insertLeisureTypeSchema,
@@ -150,16 +152,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Category management routes
-  app.get("/api/supermarkets", async (req, res) => {
-    try {
-      const supermarkets = await storage.getSupermarkets();
-      res.json(supermarkets);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch supermarkets" });
-    }
-  });
 
+  // Início das rotas de manutenção da categoria 'supermarket'
   app.post("/api/supermarkets", async (req, res) => {
     try {
       const { name } = req.body;
@@ -196,11 +190,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .json({ message: "Supermarket deleted successfully", deleted });
     } catch (error) {
       console.error("Error deleting supermarket:", error);
-      // Erro 500 para problemas internos do servidor.
-      // Pode ser mais específico se o DB retornar erro de FK, por exemplo.
       res.status(500).json({ error: "Failed to delete supermarket" });
     }
   });
+
+  app.get("/api/supermarkets", async (req, res) => {
+    try {
+      const supermarkets = await storage.getSupermarkets();
+      res.json(supermarkets);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch supermarkets" });
+    }
+  });
+  // Fim das rotas de manutenção da categoria 'supermarket'
 
   app.get("/api/restaurants", async (req, res) => {
     try {
@@ -214,7 +216,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/restaurants", async (req, res) => {
     try {
       const restaurant = insertRestaurantSchema.parse(req.body);
-      const created = await storage.createRestaurant(restaurant);
+      const created = await storage.addRestaurant(restaurant);
       res.json(created);
     } catch (error) {
       res.status(400).json({ error: "Invalid restaurant data" });

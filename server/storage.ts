@@ -1,7 +1,7 @@
 import {
   expenses,
   occasionalGroups,
-  supermarkets,
+  supermarkets, // já visto
   restaurants,
   serviceTypes,
   leisureTypes,
@@ -14,7 +14,7 @@ import {
   type OccasionalGroup,
   type InsertOccasionalGroup,
   type Supermarket, // já visto
-  type InsertSupermarket,
+  type InsertSupermarket, // já visto
   type Restaurant,
   type InsertRestaurant,
   type ServiceType,
@@ -53,13 +53,17 @@ export interface IStorage {
     status: "open" | "closed",
   ): Promise<OccasionalGroup>;
 
-  // Category management
+  // Para manutenção da subcategoria 'supermarket'
   addSupermarket(supermarket: InsertSupermarket): Promise<Supermarket>;
   deleteSupermarket(id: number): Promise<Supermarket | null>;
   getSupermarkets(): Promise<Supermarket[]>;
 
-  createRestaurant(restaurant: InsertRestaurant): Promise<Restaurant>;
+  // Para manutenção da subcategoria 'food'
+  addRestaurant(restaurant: InsertRestaurant): Promise<Restaurant>;
+  deleteRestaurant(id: number): Promise<Restaurant | null>;
   getRestaurants(): Promise<Restaurant[]>;
+  
+
   createServiceType(serviceType: InsertServiceType): Promise<ServiceType>;
   getServiceTypes(): Promise<ServiceType[]>;
   createLeisureType(leisureType: InsertLeisureType): Promise<LeisureType>;
@@ -277,7 +281,7 @@ export class DatabaseStorage implements IStorage {
     return group;
   }
 
-  // Início das funções de manutenção da categoria 'supermarket'
+  // Início das funções de manutenção da subcategoria 'supermarket'
   async addSupermarket(
     insertSupermarket: InsertSupermarket,
   ): Promise<Supermarket> {
@@ -287,7 +291,7 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return supermarket;
   }
-
+  
   async deleteSupermarket(id: number): Promise<Supermarket | null> {
     const [deletedSupermarket] = await db
       .delete(supermarkets)
@@ -297,13 +301,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getSupermarkets(): Promise<Supermarket[]> {
-    return await db.select().from(supermarkets).orderBy(supermarkets.name);
+    return await db
+      .select()
+      .from(supermarkets)
+      .orderBy(CanvasCaptureMediaStreamTrack(supermarkets.name));
   }
-  // Fim das funções de manutenção da categoria 'supermarket'
+  // Fim das funções de manutenção da subcategoria 'supermarket'
 
-  async createRestaurant(
-    insertRestaurant: InsertRestaurant,
-  ): Promise<Restaurant> {
+  // Início das funções de manutenção da subcategoria 'food'
+  async addRestaurant(insertRestaurant: InsertRestaurant): Promise<Restaurant> {
     const [restaurant] = await db
       .insert(restaurants)
       .values(insertRestaurant)
@@ -311,9 +317,19 @@ export class DatabaseStorage implements IStorage {
     return restaurant;
   }
 
+  async deleteRestaurant(id: number):     Promise<Restaurant | null> { 
+    const [deletedRestaurant] = await db
+      .delete(restaurants)
+      .where(eq(restaurants.id, id))
+      .returning();
+    return deletedRestaurant || null;
+  }
+  
   async getRestaurants(): Promise<Restaurant[]> {
     return await db.select().from(restaurants).orderBy(restaurants.name);
   }
+  // Fim das funções de manutenção da subcategoria 'food'
+  
 
   async createServiceType(
     insertServiceType: InsertServiceType,
@@ -407,18 +423,21 @@ export class DatabaseStorage implements IStorage {
 class MemoryStorage implements IStorage {
   private expenses: Expense[] = [];
   private occasionalGroups: OccasionalGroup[] = [];
-  
-  private supermarkets: Supermarket[] = [  // já visto
+
+  private supermarkets: Supermarket[] = [
+    // já visto
     { id: 1, name: "Villareal" },
     { id: 2, name: "Bretas" },
     { id: 3, name: "Consul" },
   ];
-  
+
   private restaurants: Restaurant[] = [
+    // já visto
     { id: 1, name: "McDonald's" },
     { id: 2, name: "Subway" },
-    { id: 3, name: "Pizza Hut" },
+    { id: 3, name: "Spoleto" },
   ];
+  
   private serviceTypes: ServiceType[] = [
     { id: 1, name: "Cleaning" },
     { id: 2, name: "Plumbing" },
@@ -637,7 +656,7 @@ class MemoryStorage implements IStorage {
     return group;
   }
 
-  // Início das funções de manutenção da categoria 'supermarket'
+  // Início das funções de manutenção da subcategoria 'supermarket' (não entendi a diferença)
   async addSupermarket(
     insertSupermarket: InsertSupermarket,
   ): Promise<Supermarket> {
@@ -662,11 +681,9 @@ class MemoryStorage implements IStorage {
   async getSupermarkets(): Promise<Supermarket[]> {
     return this.supermarkets.sort((a, b) => a.name.localeCompare(b.name));
   }
-  // Fim das funções de manutenção da categoria 'supermarket'
+  // Fim das funções de manutenção da subcategoria 'supermarket'
 
-  async createRestaurant(
-    insertRestaurant: InsertRestaurant,
-  ): Promise<Restaurant> {
+  async addRestaurant(insertRestaurant: InsertRestaurant): Promise<Restaurant> {
     const restaurant: Restaurant = {
       id: this.restaurants.length + 1,
       ...insertRestaurant,

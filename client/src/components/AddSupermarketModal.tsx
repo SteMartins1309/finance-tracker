@@ -1,3 +1,5 @@
+// FUNÇÃO NA OPERAÇÃO: Adiciona um novo supermercado à lista de supermercados
+
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -33,6 +35,7 @@ interface Props {
   onOpenChange: (open: boolean) => void;
 }
 
+// COMPONENTE: O componente AddSupermarketModal é responsável por renderizar o formulário modal e gerenciar o estado do formulário e as chamadas de API. Recebe dois props: open: controla se o modal está aberto. onOpenChange: função para abrir/fechar o modal.
 export function AddSupermarketModal({ open, onOpenChange }: Props) {
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -43,8 +46,9 @@ export function AddSupermarketModal({ open, onOpenChange }: Props) {
   const { toast } = useToast();
 
   const mutation = useMutation({
-    mutationFn: (data: FormData) => apiRequest("POST", "/api/supermarkets", data),
-    onSuccess: () => {
+    mutationFn: (data: FormData) =>
+      apiRequest("POST", "/api/supermarkets", data),
+    onSuccess: (newSupermarket) => {
       toast({ title: "Success", description: "Supermarket added!" });
       queryClient.invalidateQueries({ queryKey: ["/api/supermarkets"] });
       onOpenChange(false);
@@ -69,7 +73,11 @@ export function AddSupermarketModal({ open, onOpenChange }: Props) {
 
         <Form {...form}>
           <form
-            onSubmit={form.handleSubmit((data) => mutation.mutate(data))}
+            onSubmit={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              form.handleSubmit((data) => mutation.mutate(data))(e);
+            }}
             className="space-y-4"
           >
             <FormField

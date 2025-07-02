@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/select";
 import { Calendar, Star, Plus } from "lucide-react";
 
+// Importa o componente AddSupermarketModal
 import { AddSupermarketModal } from "./AddSupermarketModal";
 
 // SCHEMA: Define o esquema de validação para o formulário de adição de despesa usando a biblioteca Zod.
@@ -69,7 +70,7 @@ const expenseSchema = z.object({
   occasionalGroupId: z.string().optional(),
 
   // Category-specific fields
-  supermarketId: z.string().optional(),
+  supermarketId: z.string().optional(), 
   restaurantId: z.string().optional(),
   serviceTypeId: z.string().optional(),
   leisureTypeId: z.string().optional(),
@@ -101,7 +102,7 @@ interface AddExpenseModalProps {
 // open: controla se o modal está aberto.
 // onOpenChange: função para abrir/fechar o modal.
 export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
-  const [showAddSupermarketModal, setShowAddSupermarketModal] = useState(false);
+  
   // Estados locais para gerenciar o estado do formulário e os diálogos de adição de novos itens
   const [newItemDialogs, setNewItemDialogs] = useState<{
     [key: string]: boolean;
@@ -133,11 +134,15 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
   });
 
   // Hooks para buscar dados de categorias específicas (mercados, restaurantes, etc.)
-  const { data: supermarkets } = useQuery({
+  // Cada um é habilitado apenas quando a categoria correspondente é selecionada
+
+  const { data: supermarkets } = useQuery({  // Hook para buscar dados de mercados
     queryKey: ["/api/supermarkets"],
     enabled: routineCategory === "supermarket",
   });
+  const [showAddSupermarketModal, setShowAddSupermarketModal] = useState(false);  // Estado para controlar o modal de adição de novos mercados
 
+  
   const { data: restaurants } = useQuery({
     queryKey: ["/api/restaurants"],
     enabled: routineCategory === "food",
@@ -221,8 +226,9 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
           ? parseInt(data.occasionalGroupId)
           : null,
 
-      // Category-specific fields
+      // Campos específicos de categoria são convertidos para números ou definidos como null quando não aplicáveis
       supermarketId: data.supermarketId ? parseInt(data.supermarketId) : null,
+      
       restaurantId: data.restaurantId ? parseInt(data.restaurantId) : null,
       serviceTypeId: data.serviceTypeId ? parseInt(data.serviceTypeId) : null,
       leisureTypeId: data.leisureTypeId ? parseInt(data.leisureTypeId) : null,
@@ -402,7 +408,7 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
             {/* Campos específicos de rotina: Renderizados dependendo da routineCategory */}
             {expenseType === "routine" && (
               <div className="space-y-6">
-                <FormField
+                <FormField  // Um dos campos específicos de rotina: routineCategory
                   control={form.control}
                   name="routineCategory"
                   render={({ field }) => (
@@ -442,6 +448,8 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
                 />
 
                 {/* Renderizados dependendo da routineCategory */}
+                
+                {/*  Início da subcategoria 'supermarket'  */}
                 {routineCategory === "supermarket" && (
                   <div className="flex items-end space-x-2">
                     <FormField
@@ -456,7 +464,7 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
                           >
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder="Select supermarket" />
+                                <SelectValue placeholder="Selecione o supermercado" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
@@ -478,8 +486,13 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
                       onClick={() => setShowAddSupermarketModal(true)}
                       label="Add New"
                     />
+                    <AddSupermarketModal
+                      open={showAddSupermarketModal}
+                      onOpenChange={setShowAddSupermarketModal}
+                    />
                   </div>
                 )}
+                {/*  Fim da subcategoria 'supermarket'  */}
 
                 {routineCategory === "food" && (
                   <div className="space-y-4">
@@ -531,7 +544,7 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
                           </FormItem>
                         )}
                       />
-                      <AddNewButton onClick={() => {}} label="Add New" />
+                      <AddNewButton onClick={() => {}} label="Adicionar Novo" />
                     </div>
                   </div>
                 )}
@@ -733,10 +746,7 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
           </form>
         </Form>
 
-        <AddSupermarketModal
-          open={showAddSupermarketModal}
-          onOpenChange={setShowAddSupermarketModal}
-        />
+
       </DialogContent>
     </Dialog>
   );
