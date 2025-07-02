@@ -77,7 +77,7 @@ export default function Categories() {
 
 
 
-  const { data: occasionalGroups, isLoading: groupsLoading } = useQuery({
+  const { data: occasionalGroups = [], isLoading: groupsLoading } = useQuery({
     queryKey: ["/api/occasional-groups"],
   });
 
@@ -91,7 +91,7 @@ export default function Categories() {
 
   
   // Hook para buscar a lista de supermercados
-  const { data: supermarkets } = useQuery({
+  const { data: supermarkets = [] } = useQuery({
     queryKey: ["/api/supermarkets"],
   });
 
@@ -99,7 +99,7 @@ export default function Categories() {
   const [supermarketToDelete, setSupermarketToDelete] = useState<{ id: number; name: string } | null>(null);
 
   // Hook para buscar a lista de restaurantes
-  const { data: restaurants } = useQuery({
+  const { data: restaurants = [] } = useQuery({
     queryKey: ["/api/restaurants"],
   });
 
@@ -490,7 +490,8 @@ export default function Categories() {
           </CardContent>
         </Card>
       </div> 
-      <AlertDialog     {/*  AlertDialog de Confirmação para Exclusão de Supermercado  */}
+      {/* AlertDialog de Confirmação para Exclusão de Supermercado */}
+      <AlertDialog
         open={!!supermarketToDelete}
         onOpenChange={(open) => !open && setSupermarketToDelete(null)}
       >
@@ -520,12 +521,13 @@ export default function Categories() {
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
-      </AlertDialog>    {/*  Fim do AlertDialog de Confirmação para Exclusão de Supermercado  */}
-
-      <AlertDialog     {/*  AlertDialog de Confirmação para Exclusão de Restaurante  */}
-          open={!!restaurantToDelete} // Abre se há um restaurante selecionado para exclusão
-          onOpenChange={(open) => !open && setRestaurantToDelete(null)} // Fecha o modal se for cancelado
-        >
+      </AlertDialog>
+      
+      {/* AlertDialog de Confirmação para Exclusão de Restaurante */}
+      <AlertDialog
+        open={!!restaurantToDelete}
+        onOpenChange={(open) => !open && setRestaurantToDelete(null)}
+      >
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
@@ -552,7 +554,7 @@ export default function Categories() {
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
-        </AlertDialog>      {/*  Fim do AlertDialog de Confirmação para Exclusão de Restaurante  */}
+        </AlertDialog>
 
   
     </div>

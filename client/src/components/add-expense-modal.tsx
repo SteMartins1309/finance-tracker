@@ -94,12 +94,12 @@ const expenseSchema = z.object({
     .enum(["car", "uber", "public-transport", "walking", "bicycle"])
     .optional(),
   purchaseType: z.enum(["in-person", "online"]).optional(),
+  
+  // Campos para a subcategoria 'food'
+  foodPurchaseType: z.enum(["in-person", "online"]).optional(), 
+  occasionType: z.enum(["normal", "special"]).optional(), 
+  specialOccasionDescription: z.string().optional(),
 });
-
-// Campos para a subcategoria 'food'
-foodPurchaseType: z.enum(["in-person", "online"]).optional(), 
-occasionType: z.enum(["normal", "special"]).optional(), 
-specialOccasionDescription: z.string().optional(),
 
 // Cria o tipo TypeScript baseado no schema. Isso garante tipagem automática no formulário
 type ExpenseFormData = z.infer<typeof expenseSchema>;
@@ -658,8 +658,7 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
                         )}
                       </div>
                     )}
-                )}
-                {/*  Fim da subcategoria 'food'  */}
+                {/* Fim da subcategoria 'food' */}
 
 
                 

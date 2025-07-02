@@ -304,7 +304,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(supermarkets)
-      .orderBy(CanvasCaptureMediaStreamTrack(supermarkets.name));
+      .orderBy(supermarkets.name);
   }
   // Fim das funções de manutenção da subcategoria 'supermarket'
 
@@ -684,18 +684,28 @@ class MemoryStorage implements IStorage {
   // Fim das funções de manutenção da subcategoria 'supermarket'
 
   
-  // async addRestaurant(insertRestaurant: InsertRestaurant): Promise<Restaurant> {
-  //   const restaurant: Restaurant = {
-  //     id: this.restaurants.length + 1,
-  //     ...insertRestaurant,
-  //   };
-  //   this.restaurants.push(restaurant);
-  //   return restaurant;
-  // }
+  async addRestaurant(insertRestaurant: InsertRestaurant): Promise<Restaurant> {
+    const restaurant: Restaurant = {
+      id: this.restaurants.length + 1,
+      ...insertRestaurant,
+    };
+    this.restaurants.push(restaurant);
+    return restaurant;
+  }
 
-  // async getRestaurants(): Promise<Restaurant[]> {
-  //   return this.restaurants.sort((a, b) => a.name.localeCompare(b.name));
-  // }
+  async deleteRestaurant(id: number): Promise<Restaurant | null> {
+    const index = this.restaurants.findIndex((r) => r.id === id);
+    if (index === -1) {
+      return null;
+    }
+    const deletedRestaurant = this.restaurants[index];
+    this.restaurants.splice(index, 1);
+    return deletedRestaurant;
+  }
+
+  async getRestaurants(): Promise<Restaurant[]> {
+    return this.restaurants.sort((a, b) => a.name.localeCompare(b.name));
+  }
 
   async createServiceType(
     insertServiceType: InsertServiceType,
