@@ -39,8 +39,14 @@ import {
 } from "@/components/ui/select";
 import { Calendar, Star, Plus } from "lucide-react";
 
+
 // Importa o componente AddSupermarketModal
 import { AddSupermarketModal } from "./AddSupermarketModal";
+
+// Importa o componente AddRestaurantModal
+import { AddRestaurantModal } from "./AddRestaurantModal";
+
+
 
 // SCHEMA: Define o esquema de validação para o formulário de adição de despesa usando a biblioteca Zod.
 // Define o que o formulário espera: campos obrigatórios, tipos, enums.
@@ -90,6 +96,11 @@ const expenseSchema = z.object({
   purchaseType: z.enum(["in-person", "online"]).optional(),
 });
 
+// Campos para a subcategoria 'food'
+foodPurchaseType: z.enum(["in-person", "online"]).optional(), 
+occasionType: z.enum(["normal", "special"]).optional(), 
+specialOccasionDescription: z.string().optional(),
+
 // Cria o tipo TypeScript baseado no schema. Isso garante tipagem automática no formulário
 type ExpenseFormData = z.infer<typeof expenseSchema>;
 
@@ -133,21 +144,24 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
     enabled: expenseType === "occasional",
   });
 
-  // Hooks para buscar dados de categorias específicas (mercados, restaurantes, etc.)
+  
+  // HOOKS PARA BUSCAR DADOS DE CATEGORIAS ESPECÍFICAS
   // Cada um é habilitado apenas quando a categoria correspondente é selecionada
 
-  const { data: supermarkets } = useQuery({  // Hook para buscar dados de mercados
+  // Hook para buscar dados de supermercados
+  const { data: supermarkets } = useQuery({ 
     queryKey: ["/api/supermarkets"],
     enabled: routineCategory === "supermarket",
   });
-  const [showAddSupermarketModal, setShowAddSupermarketModal] = useState(false);  // Estado para controlar o modal de adição de novos mercados
 
-  
+  // Hook para buscar dados de restaurantes
   const { data: restaurants } = useQuery({
     queryKey: ["/api/restaurants"],
     enabled: routineCategory === "food",
   });
 
+
+  
   const { data: serviceTypes } = useQuery({
     queryKey: ["/api/service-types"],
     enabled: routineCategory === "services",
@@ -177,6 +191,15 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
     queryKey: ["/api/charity-types"],
     enabled: routineCategory === "charity",
   });
+
+  
+  // HOOKS PARA LIDAR COM A ADIÇÃO DE NOVOS ITENS
+  // Cada hook gerencia o estado de um modal específico para adicionar novos itens (ex: mercados, restaurantes, etc.)
+  
+  // Hooks para lidar com a adição de novos supermercados
+  const [showAddSupermarketModal, setShowAddSupermarketModal] = useState(false); 
+
+  
 
   // Hook para criar uma nova despesa
   // Envia os dados do formulário para a API.
@@ -248,6 +271,14 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
       destination: data.destination || null,
       transportMode: data.transportMode || null,
       purchaseType: data.purchaseType || null,
+
+
+      // Novos campos para a subcategoria 'food'
+      foodPurchaseType: data.routineCategory === "food" ? (data.foodPurchaseType || null) : null, 
+      occasionType: data.routineCategory === "food" ? (data.occasionType || null) : null, 
+      specialOccasionDescription: data.routineCategory === "food" && data.occasionType === "special" ? (data.specialOccasionDescription || null) : null,
+
+      
     };
 
     createExpenseMutation.mutate(expenseData);
@@ -450,9 +481,9 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
                 {/* Renderizados dependendo da routineCategory */}
                 
                 {/*  Início da subcategoria 'supermarket'  */}
-                {routineCategory === "supermarket" && (
+                {routineCategory === "supermarket" && ( 
                   <div className="flex items-end space-x-2">
-                    <FormField
+                    <FormField  // Um dos campos específicos: supermarketId
                       control={form.control}
                       name="supermarketId"
                       render={({ field }) => (
@@ -482,11 +513,11 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
                         </FormItem>
                       )}
                     />
-                    <AddNewButton
+                    <AddNewButton  // Botão para adicionar novos supermercados
                       onClick={() => setShowAddSupermarketModal(true)}
-                      label="Add New"
+                      label="Adicionar Novo"
                     />
-                    <AddSupermarketModal
+                    <AddSupermarketModal  // Modal para adicionar novos supermercados
                       open={showAddSupermarketModal}
                       onOpenChange={setShowAddSupermarketModal}
                     />
@@ -494,9 +525,10 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
                 )}
                 {/*  Fim da subcategoria 'supermarket'  */}
 
+                {/*  Início da subcategoria 'food'  */}
                 {routineCategory === "food" && (
                   <div className="space-y-4">
-                    <FormField
+                    <FormField  // Um dos campos específicos: description
                       control={form.control}
                       name="description"
                       render={({ field }) => (
@@ -514,7 +546,7 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
                       )}
                     />
                     <div className="flex items-end space-x-2">
-                      <FormField
+                      <FormField  // Um dos campos específicos: restaurantId
                         control={form.control}
                         name="restaurantId"
                         render={({ field }) => (
@@ -544,11 +576,93 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
                           </FormItem>
                         )}
                       />
-                      <AddNewButton onClick={() => {}} label="Adicionar Novo" />
-                    </div>
+                      <AddNewButton  // Botão para adicionar novos restaurantes
+                        onClick={() => setShowAddRestaurantModal(true)}
+                        label="Adicionar Novo"
+                      />
+                      <AddRestaurantModal  // Modal para adicionar novos restaurantes
+                        open={showAddRestaurantModal}
+                        onOpenChange={setShowAddRestaurantModal}
+                      />
                   </div>
+                    <FormField  // Um dos campos específicos: foodPurchaseType
+                      control={form.control}
+                      name="foodPurchaseType"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Purchase Location</FormLabel>
+                          <FormControl>
+                            <RadioGroup
+                              onValueChange={field.onChange}
+                              value={field.value}
+                              className="flex space-x-4"
+                            >
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="in-person" id="food-in-person" />
+                                <label htmlFor="food-in-person">In-Person</label>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="online" id="food-online" />
+                                <label htmlFor="food-online">Online</label>
+                              </div>
+                            </RadioGroup>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField  // Um dos campos específicos: occasionType
+                       control={form.control}
+                       name="occasionType"
+                       render={({ field }) => (
+                         <FormItem>
+                           <FormLabel>Occasion Type</FormLabel>
+                           <FormControl>
+                             <RadioGroup
+                               onValueChange={field.onChange}
+                               value={field.value}
+                               className="flex space-x-4"
+                             >
+                               <div className="flex items-center space-x-2">
+                                 <RadioGroupItem value="normal" id="occasion-normal" />
+                                 <label htmlFor="occasion-normal">Normal</label>
+                               </div>
+                               <div className="flex items-center space-x-2">
+                                 <RadioGroupItem value="special" id="occasion-special" />
+                                 <label htmlFor="occasion-special">Special Occasion</label>
+                               </div>
+                             </RadioGroup>
+                           </FormControl>
+                           <FormMessage />
+                         </FormItem>
+                       )}
+                     />
+                    {watchedValues.occasionType === "special" && (
+                          <FormField  // Um dos campos específicos: specialOccasionDescription
+                            control={form.control}
+                            name="specialOccasionDescription"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Special Occasion Description</FormLabel>
+                                <FormControl>
+                                  <Textarea
+                                    placeholder="ex: aniversário de alguém, celebração de algo..."
+                                    rows={2}
+                                    {...field}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        )}
+                      </div>
+                    )}
                 )}
+                {/*  Fim da subcategoria 'food'  */}
 
+
+                
                 {routineCategory === "shopping" && (
                   <div className="space-y-4">
                     <FormField

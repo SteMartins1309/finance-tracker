@@ -1,4 +1,4 @@
-// FUNÇÃO NA OPERAÇÃO: Adiciona um novo supermercado à lista de supermercados
+// FUNÇÃO NA OPERAÇÃO: Adiciona um novo restaurante à lista de restaurantes
 
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -25,7 +25,7 @@ import { useToast } from "@/hooks/use-toast";
 
 // Esquema de validação com Zod
 const schema = z.object({
-  name: z.string().min(2, "Supermarket name is required"),
+  name: z.string().min(2, "Restaurant name is required"),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -35,8 +35,8 @@ interface Props {
   onOpenChange: (open: boolean) => void;
 }
 
-// COMPONENTE: O componente AddSupermarketModal é responsável por renderizar o formulário modal e gerenciar o estado do formulário e as chamadas de API. Recebe dois props: open: controla se o modal está aberto. onOpenChange: função para abrir/fechar o modal.
-export function AddSupermarketModal({ open, onOpenChange }: Props) {
+// COMPONENTE: O componente AddRestaurantModal é responsável por renderizar o formulário modal e gerenciar o estado do formulário e as chamadas de API. Recebe dois props: open: controla se o modal está aberto. onOpenChange: função para abrir/fechar o modal.
+export function AddRestaurantModal({ open, onOpenChange }: Props) {
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { name: "" },
@@ -47,10 +47,10 @@ export function AddSupermarketModal({ open, onOpenChange }: Props) {
 
   const mutation = useMutation({
     mutationFn: (data: FormData) =>
-      apiRequest("POST", "/api/supermarkets", data),
-    onSuccess: (newSupermarket) => {
-      toast({ title: "Success", description: "Supermarket added!" });
-      queryClient.invalidateQueries({ queryKey: ["/api/supermarkets"] });
+      apiRequest("POST", "/api/restaurants", data),
+    onSuccess: (newRestaurant) => {
+      toast({ title: "Success", description: "Restaurant added!" });
+      queryClient.invalidateQueries({ queryKey: ["/api/restaurants"] });
       onOpenChange(false);
       form.reset();
     },
@@ -58,7 +58,7 @@ export function AddSupermarketModal({ open, onOpenChange }: Props) {
       toast({
         title: "Error",
         description:
-          error?.response?.data?.message || "Could not add supermarket",
+          error?.response?.data?.message || "Could not add restaurant",
         variant: "destructive",
       });
     },
@@ -85,10 +85,10 @@ export function AddSupermarketModal({ open, onOpenChange }: Props) {
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Supermarket Name</FormLabel>
+                  <FormLabel>Restaurant Name</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="ex: Roldão, Carrefour..."
+                      placeholder="ex: Spoleto, Mc Donald's..."
                       autoFocus
                       {...field}
                     />

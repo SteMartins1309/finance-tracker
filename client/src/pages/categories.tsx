@@ -75,9 +75,12 @@ export default function Categories() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // NOVO ESTADO: Para controlar o modal de confirmação de exclusão
-  const [supermarketToDelete, setSupermarketToDelete] = useState<{ id: number; name: string } | null>(null);
-  
+
+
+  const { data: occasionalGroups, isLoading: groupsLoading } = useQuery({
+    queryKey: ["/api/occasional-groups"],
+  });
+
   const form = useForm<OccasionalGroupFormData>({
     resolver: zodResolver(occasionalGroupSchema),
     defaultValues: {
@@ -85,18 +88,26 @@ export default function Categories() {
     },
   });
 
-  const { data: occasionalGroups, isLoading: groupsLoading } = useQuery({
-    queryKey: ["/api/occasional-groups"],
-  });
 
+  
+  // Hook para buscar a lista de supermercados
   const { data: supermarkets } = useQuery({
     queryKey: ["/api/supermarkets"],
   });
 
+  // Hook para gerenciar o estado do modal de confirmação de exclusão de supermercado
+  const [supermarketToDelete, setSupermarketToDelete] = useState<{ id: number; name: string } | null>(null);
+
+  // Hook para buscar a lista de restaurantes
   const { data: restaurants } = useQuery({
     queryKey: ["/api/restaurants"],
   });
 
+  // Hook para gerenciar o estado do modal de confirmação de exclusão de restaurante
+  const [restaurantToDelete, setRestaurantToDelete] = useState<{ id: number; name: string } | null>(null);
+
+
+  
   const createGroupMutation = useMutation({
     mutationFn: async (data: OccasionalGroupFormData) => {
       return await apiRequest("POST", "/api/occasional-groups", data);
@@ -147,7 +158,10 @@ export default function Categories() {
     },
   });
 
-  // NOVA MUTAÇÃO: Para excluir supermercados
+
+  
+  
+  // Mutação para excluir um supermercado
   const deleteSupermarketMutation = useMutation({
     mutationFn: async (id: number) => {
       return await apiRequest("DELETE", `/api/supermarkets/${id}`);
@@ -171,6 +185,32 @@ export default function Categories() {
     },
   });
 
+  // Mutação para excluir um restaurante
+  const deleteRestaurantMutation = useMutation({ 
+    mutationFn: async (id: number) => {
+      return await apiRequest("DELETE", `/api/restaurants/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/restaurants"] }); // Invalida a query para atualizar a lista
+      toast({
+        title: "Success",
+        description: "Restaurant deleted successfully!",
+      });
+      setRestaurantToDelete(null); // Fecha o modal de confirmação
+    },
+    onError: (error: any) => {
+      console.error("Error details:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete restaurant. Please try again.",
+        variant: "destructive",
+      });
+      setRestaurantToDelete(null); // Fecha o modal de confirmação mesmo com erro
+    },
+  });
+
+  
+
   const onSubmit = (data: OccasionalGroupFormData) => {
     createGroupMutation.mutate(data);
   };
@@ -180,11 +220,22 @@ export default function Categories() {
     toggleGroupStatusMutation.mutate({ id: group.id, status: newStatus });
   };
 
-  // NOVO: Função para iniciar o processo de exclusão
+
+  
+  // Função para lidar com a exclusão de um supermercado
   const handleDeleteSupermarket = (supermarket: { id: number; name: string }) => {
     setSupermarketToDelete(supermarket); // Abre o modal de confirmação
   };
 
+  // Função para lidar com a exclusão de um restaurante
+  const handleDeleteRestaurant = (restaurant: { id: number; name: string }) => { 
+    setRestaurantToDelete(restaurant);// Abre o modal de confirmação
+  };
+
+
+
+
+    
   const routineCategories = [
     {
       name: "Supermarket",
@@ -292,7 +343,8 @@ export default function Categories() {
                         {category.name}
                       </p>
                       <p className="text-sm text-text-secondary">
-                        {/* NOVO: Exibe a lista de supermercados/restaurantes para as categorias relevantes */}
+                        
+                        {/*  Início da subcategoria 'supermarket'  */}
                         {category.name === "Supermarket" && (
                           <>
                             {supermarkets?.map((sm: any) => (
@@ -302,7 +354,7 @@ export default function Categories() {
                                   variant="ghost"
                                   size="icon"
                                   className="h-6 w-6"
-                                  onClick={() => handleDeleteSupermarket(sm)} // <--- Chamada para o handleDeleteSupermarket
+                                  onClick={() => handleDeleteSupermarket(sm)} // Chamada para o handleDeleteSupermarket
                                 >
                                   <Trash2 className="h-3 w-3 text-red-500" />
                                 </Button>
@@ -311,6 +363,30 @@ export default function Categories() {
                             {supermarkets?.length === 0 && <span className="ml-2">No supermarkets added.</span>}
                           </>
                         )}
+                        {/*  Fim da subcategoria 'supermarket'  */}
+
+                        {/*  Início da subcategoria 'food'  */}
+                        {category.name === "Food" && ( 
+                          <>
+                            {restaurants?.map((res: any) => (
+                              <div key={res.id} className="flex items-center justify-between text-xs py-0.5 ml-2">
+                                <span>{res.name}</span>
+                                <Button 
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6"
+                                  onClick={() => handleDeleteRestaurant(res)} // Chamada para o handleDeleteRestaurant
+                                >
+                                  <Trash2 className="h-3 w-3 text-red-500" />
+                                </Button>
+                              </div>
+                            ))}
+                            {restaurants?.length === 0 && <span className="ml-2">No restaurants added.</span>}
+                          </>
+                        )}
+                        {/*  Fim da subcategoria 'food'  */}
+
+                        
                         {category.count}{" "}
                         {category.count === 1 ? "item" : "items"} configured
                       </p>
@@ -413,10 +489,8 @@ export default function Categories() {
             )}
           </CardContent>
         </Card>
-      </div>
-
-      {/* AlertDialog de Confirmação para Exclusão de Supermercado */}
-      <AlertDialog
+      </div> 
+      <AlertDialog     {/*  AlertDialog de Confirmação para Exclusão de Supermercado  */}
         open={!!supermarketToDelete}
         onOpenChange={(open) => !open && setSupermarketToDelete(null)}
       >
@@ -446,7 +520,41 @@ export default function Categories() {
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
-      </AlertDialog>
+      </AlertDialog>    {/*  Fim do AlertDialog de Confirmação para Exclusão de Supermercado  */}
+
+      <AlertDialog     {/*  AlertDialog de Confirmação para Exclusão de Restaurante  */}
+          open={!!restaurantToDelete} // Abre se há um restaurante selecionado para exclusão
+          onOpenChange={(open) => !open && setRestaurantToDelete(null)} // Fecha o modal se for cancelado
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete{" "}
+                <span className="font-semibold text-primary">{restaurantToDelete?.name}</span>{" "}
+                from your restaurants list.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleteRestaurantMutation.isPending}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (restaurantToDelete) {
+                    deleteRestaurantMutation.mutate(restaurantToDelete.id);
+                  }
+                }}
+                disabled={deleteRestaurantMutation.isPending}
+                className="bg-destructive hover:bg-destructive/90"
+              >
+                {deleteRestaurantMutation.isPending ? "Deleting..." : "Delete"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>      {/*  Fim do AlertDialog de Confirmação para Exclusão de Restaurante  */}
+
+  
     </div>
   );
 }

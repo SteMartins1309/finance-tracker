@@ -2,7 +2,7 @@ import {
   expenses,
   occasionalGroups,
   supermarkets, // já visto
-  restaurants,
+  restaurants,  // já visto
   serviceTypes,
   leisureTypes,
   personalCareTypes,
@@ -15,8 +15,8 @@ import {
   type InsertOccasionalGroup,
   type Supermarket, // já visto
   type InsertSupermarket, // já visto
-  type Restaurant,
-  type InsertRestaurant,
+  type Restaurant,  // já visto
+  type InsertRestaurant,  // já visto
   type ServiceType,
   type InsertServiceType,
   type LeisureType,
@@ -683,18 +683,19 @@ class MemoryStorage implements IStorage {
   }
   // Fim das funções de manutenção da subcategoria 'supermarket'
 
-  async addRestaurant(insertRestaurant: InsertRestaurant): Promise<Restaurant> {
-    const restaurant: Restaurant = {
-      id: this.restaurants.length + 1,
-      ...insertRestaurant,
-    };
-    this.restaurants.push(restaurant);
-    return restaurant;
-  }
+  
+  // async addRestaurant(insertRestaurant: InsertRestaurant): Promise<Restaurant> {
+  //   const restaurant: Restaurant = {
+  //     id: this.restaurants.length + 1,
+  //     ...insertRestaurant,
+  //   };
+  //   this.restaurants.push(restaurant);
+  //   return restaurant;
+  // }
 
-  async getRestaurants(): Promise<Restaurant[]> {
-    return this.restaurants.sort((a, b) => a.name.localeCompare(b.name));
-  }
+  // async getRestaurants(): Promise<Restaurant[]> {
+  //   return this.restaurants.sort((a, b) => a.name.localeCompare(b.name));
+  // }
 
   async createServiceType(
     insertServiceType: InsertServiceType,

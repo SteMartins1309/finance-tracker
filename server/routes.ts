@@ -6,8 +6,8 @@ import {
   insertOccasionalGroupSchema,
   
   insertSupermarketSchema,  // já visto
+  insertRestaurantSchema,  // já visto
   
-  insertRestaurantSchema,
   insertServiceTypeSchema,
   insertLeisureTypeSchema,
   insertPersonalCareTypeSchema,
@@ -153,7 +153,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
 
-  // Início das rotas de manutenção da categoria 'supermarket'
+  // Início das rotas de manutenção da subcategoria 'supermarket'
   app.post("/api/supermarkets", async (req, res) => {
     try {
       const { name } = req.body;
@@ -202,17 +202,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to fetch supermarkets" });
     }
   });
-  // Fim das rotas de manutenção da categoria 'supermarket'
+  // Fim das rotas de manutenção da subcategoria 'supermarket'
 
-  app.get("/api/restaurants", async (req, res) => {
-    try {
-      const restaurants = await storage.getRestaurants();
-      res.json(restaurants);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch restaurants" });
-    }
-  });
 
+  // Início das rotas de manutenção da subcategoria 'food'
   app.post("/api/restaurants", async (req, res) => {
     try {
       const restaurant = insertRestaurantSchema.parse(req.body);
@@ -223,6 +216,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/restaurants/:id", async (req, res) => { 
+    try {
+      const id = parseInt(req.params.id); // Pega o ID da URL
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid ID" });
+      }
+      const deleted = await storage.deleteRestaurant(id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Restaurant not found" });
+      }
+      res.status(200).json({ message: "Restaurant deleted successfully", deleted });
+    } catch (error) {
+      console.error("Error deleting restaurant:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ errors: error.issues });
+      }
+      res.status(500).json({ error: "Failed to delete restaurant" });
+    }
+  });
+
+  app.get("/api/restaurants", async (req, res) => {
+    try {
+      const restaurants = await storage.getRestaurants();
+      res.json(restaurants);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch restaurants" });
+    }
+  });
+  // Fim das rotas de manutenção da subcategoria 'food'
+
+  
   app.get("/api/service-types", async (req, res) => {
     try {
       const serviceTypes = await storage.getServiceTypes();

@@ -64,7 +64,7 @@ export const occasionalGroupStatusEnum = pgEnum("occasional_group_status", [
   "closed",
 ]);
 
-// Utilizada na subcategoria 'food'
+// (PRONTO) Utilizada na subcategoria 'food'
 export const occasionTypeEnum = pgEnum("occasion_type", ["normal", "special"]);
 
 // TABELAS (pgTable): Cada uma dessas constantes (users, occasionalGroups, supermarkets, etc.) representa uma tabela no seu banco de dados PostgreSQL. Para cada tabela, você define:
@@ -145,7 +145,7 @@ export const expenses = pgTable("expenses", {
   supermarketId: integer("supermarket_id"),
   // Para a subcategoria 'food'
   restaurantId: integer("restaurant_id"),
-  foodOccasionType: occasionTypeEnum("occasion_type").default("normal"),
+  occasionType: occasionTypeEnum("occasion_type").default("normal"),
   specialOccasionDescription: text("special_occasion_description"),
   foodPurchaseType: purchaseTypeEnum("food_purchase_type"),
 
