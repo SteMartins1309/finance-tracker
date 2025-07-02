@@ -39,13 +39,17 @@ import {
 } from "@/components/ui/select";
 import { Calendar, Star, Plus } from "lucide-react";
 
+//----------------------------------------------------------------------------
+// Importa o componente AddFixedExpenseTypeModal
+import { AddFixedExpenseTypeModal } from "./AddFixedExpenseTypeModal";
 
 // Importa o componente AddSupermarketModal
 import { AddSupermarketModal } from "./AddSupermarketModal";
 
 // Importa o componente AddRestaurantModal
 import { AddRestaurantModal } from "./AddRestaurantModal";
-
+import { fixedExpenseTypes } from "@shared/schema";
+//----------------------------------------------------------------------------
 
 
 // SCHEMA: Define o esquema de validação para o formulário de adição de despesa usando a biblioteca Zod.
@@ -61,6 +65,7 @@ const expenseSchema = z.object({
   expenseType: z.enum(["routine", "occasional"]),
   routineCategory: z
     .enum([
+      "fixed"
       "supermarket",
       "food",
       "services",
@@ -76,6 +81,7 @@ const expenseSchema = z.object({
   occasionalGroupId: z.string().optional(),
 
   // Category-specific fields
+  fixedExpenseTypeId: z.string().optional()
   supermarketId: z.string().optional(), 
   restaurantId: z.string().optional(),
   serviceTypeId: z.string().optional(),
@@ -94,11 +100,16 @@ const expenseSchema = z.object({
     .enum(["car", "uber", "public-transport", "walking", "bicycle"])
     .optional(),
   purchaseType: z.enum(["in-person", "online"]).optional(),
+
+  //--------------------------------------------------------------------------
+  // Campos para a subcategoria 'fixed'
+  frequency: z.enum(["weekly", "monthly", "annually"]).optional(),
   
   // Campos para a subcategoria 'food'
   foodPurchaseType: z.enum(["in-person", "online"]).optional(), 
   occasionType: z.enum(["normal", "special"]).optional(), 
   specialOccasionDescription: z.string().optional(),
+  //--------------------------------------------------------------------------
 });
 
 // Cria o tipo TypeScript baseado no schema. Isso garante tipagem automática no formulário
@@ -144,10 +155,16 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
     enabled: expenseType === "occasional",
   });
 
-  
+  //------------------------------------------------------------------------------
   // HOOKS PARA BUSCAR DADOS DE CATEGORIAS ESPECÍFICAS
   // Cada um é habilitado apenas quando a categoria correspondente é selecionada
-
+  
+  // Hook para buscar dados de tipos de despesas fixas
+  const { data: fixedExpenseTypes } = useQuery{
+    queryKey: ["/api/fixed-expense-types"],
+    enabled: routineCategory === "fixed",
+  });
+  
   // Hook para buscar dados de supermercados
   const { data: supermarkets } = useQuery({ 
     queryKey: ["/api/supermarkets"],
@@ -159,7 +176,7 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
     queryKey: ["/api/restaurants"],
     enabled: routineCategory === "food",
   });
-
+  //------------------------------------------------------------------------------
 
   
   const { data: serviceTypes } = useQuery({
@@ -192,12 +209,19 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
     enabled: routineCategory === "charity",
   });
 
-  
+  //------------------------------------------------------------------------------
   // HOOKS PARA LIDAR COM A ADIÇÃO DE NOVOS ITENS
   // Cada hook gerencia o estado de um modal específico para adicionar novos itens (ex: mercados, restaurantes, etc.)
+
+  // Hooks para lidar com a adição de novos tipos de despesas fixas
+  const [showAddFixedExpenseTypeModal, setShowAddFixedExpenseTypeModal] = useState(false);
   
   // Hooks para lidar com a adição de novos supermercados
   const [showAddSupermarketModal, setShowAddSupermarketModal] = useState(false); 
+
+  // Hooks para lidar com a adição de novos restaurantes
+  const [showAddRestaurantModal, setShowAddRestaurantModal] = useState(false); 
+  //------------------------------------------------------------------------------
 
   
 
@@ -249,10 +273,14 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
           ? parseInt(data.occasionalGroupId)
           : null,
 
-      // Campos específicos de categoria são convertidos para números ou definidos como null quando não aplicáveis
-      supermarketId: data.supermarketId ? parseInt(data.supermarketId) : null,
       
+      // Category-specific fields
+      //----------------------------------------------------------------------------
+      fixedExpenseTypes: data.fixedExpenseTypeId ? parseInt(data.fixedExpenseTypeId) : null
+      supermarketId: data.supermarketId ? parseInt(data.supermarketId) : null,
       restaurantId: data.restaurantId ? parseInt(data.restaurantId) : null,
+      //----------------------------------------------------------------------------
+      
       serviceTypeId: data.serviceTypeId ? parseInt(data.serviceTypeId) : null,
       leisureTypeId: data.leisureTypeId ? parseInt(data.leisureTypeId) : null,
       personalCareTypeId: data.personalCareTypeId
@@ -272,12 +300,15 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
       transportMode: data.transportMode || null,
       purchaseType: data.purchaseType || null,
 
-
+      //--------------------------------------------------------------------------
+      // Novos campos para a subcategoria 'fixed'
+      frequency: data.routineCategory === "fixed" ? (data.frequency || null) : null,
+      
       // Novos campos para a subcategoria 'food'
       foodPurchaseType: data.routineCategory === "food" ? (data.foodPurchaseType || null) : null, 
       occasionType: data.routineCategory === "food" ? (data.occasionType || null) : null, 
       specialOccasionDescription: data.routineCategory === "food" && data.occasionType === "special" ? (data.specialOccasionDescription || null) : null,
-
+      //--------------------------------------------------------------------------
       
     };
 
@@ -479,6 +510,69 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
                 />
 
                 {/* Renderizados dependendo da routineCategory */}
+
+                {/*  Início da subcategoria 'fixed'  */}
+                {routineCategory === "fixed" && ( 
+                  <div className="space-y-4">
+                    <div className="flex items-end space-x-2">
+                      <FormField  // Um dos campos específicos: fixedExpenseTypeId
+                        control={form.control}
+                        name="fixedExpenseTypeId"
+                        render={({ field }) => (
+                          <FormItem className="flex-1">
+                            <FormLabel>Tipo de despesa fixa</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Selecione o tipo de despesa fixa" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {fixedExpenseTypes?.map((type: any) => (
+                                  <SelectItem key={type.id} value={type.id.toString()}>
+                                    {type.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <AddNewButton
+                        onClick={() => setAddFixedExpenseTypeModalOpen(true)} 
+                        label="Add New"
+                      />
+                    </div>
+                    <FormField  // Um dos campos específicos: frequency
+                      control={form.control}
+                      name="frequency"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Frequência</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione a frequência desse gasto" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="semanalmente">Weekly</SelectItem>
+                              <SelectItem value="mensalmente">Monthly</SelectItem>
+                              <SelectItem value="anualmente">Annually</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
+                <AddFixedExpenseTypeModal
+                  open={showAddFixedExpenseTypeModal}
+                  onOpenChange={setShowAddFixedExpenseTypeModal}
+                />
+                {/*  Fim da subcategoria 'fixed'  */}                
                 
                 {/*  Início da subcategoria 'supermarket'  */}
                 {routineCategory === "supermarket" && ( 
@@ -488,7 +582,7 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
                       name="supermarketId"
                       render={({ field }) => (
                         <FormItem className="flex-1">
-                          <FormLabel>Supermarket</FormLabel>
+                          <FormLabel>Supermercado</FormLabel>
                           <Select
                             onValueChange={field.onChange}
                             value={field.value}
@@ -528,7 +622,7 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
                 {/*  Início da subcategoria 'food'  */}
                 {routineCategory === "food" && (
                   <div className="space-y-4">
-                    <FormField  // Um dos campos específicos: description
+                    {/* <FormField  // Um dos campos específicos: description
                       control={form.control}
                       name="description"
                       render={({ field }) => (
@@ -544,21 +638,21 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
                           <FormMessage />
                         </FormItem>
                       )}
-                    />
+                    /> */}
                     <div className="flex items-end space-x-2">
                       <FormField  // Um dos campos específicos: restaurantId
                         control={form.control}
                         name="restaurantId"
                         render={({ field }) => (
                           <FormItem className="flex-1">
-                            <FormLabel>Restaurant</FormLabel>
+                            <FormLabel>Restaurante</FormLabel>
                             <Select
                               onValueChange={field.onChange}
                               value={field.value}
                             >
                               <FormControl>
                                 <SelectTrigger>
-                                  <SelectValue placeholder="Select restaurant" />
+                                  <SelectValue placeholder="Selecione o restaurante" />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
@@ -590,7 +684,7 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
                       name="foodPurchaseType"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Purchase Location</FormLabel>
+                          <FormLabel>Forma de Pedido</FormLabel>
                           <FormControl>
                             <RadioGroup
                               onValueChange={field.onChange}
@@ -599,11 +693,11 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
                             >
                               <div className="flex items-center space-x-2">
                                 <RadioGroupItem value="in-person" id="food-in-person" />
-                                <label htmlFor="food-in-person">In-Person</label>
+                                <label htmlFor="food-in-person">No local</label>
                               </div>
                               <div className="flex items-center space-x-2">
                                 <RadioGroupItem value="online" id="food-online" />
-                                <label htmlFor="food-online">Online</label>
+                                <label htmlFor="food-online">À distância</label>
                               </div>
                             </RadioGroup>
                           </FormControl>
@@ -616,7 +710,7 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
                        name="occasionType"
                        render={({ field }) => (
                          <FormItem>
-                           <FormLabel>Occasion Type</FormLabel>
+                           <FormLabel>Ocasião</FormLabel>
                            <FormControl>
                              <RadioGroup
                                onValueChange={field.onChange}
@@ -629,7 +723,7 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
                                </div>
                                <div className="flex items-center space-x-2">
                                  <RadioGroupItem value="special" id="occasion-special" />
-                                 <label htmlFor="occasion-special">Special Occasion</label>
+                                 <label htmlFor="occasion-special">Especial</label>
                                </div>
                              </RadioGroup>
                            </FormControl>
@@ -643,7 +737,7 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
                             name="specialOccasionDescription"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Special Occasion Description</FormLabel>
+                                <FormLabel>Descrição da Ocasião Especial</FormLabel>
                                 <FormControl>
                                   <Textarea
                                     placeholder="ex: aniversário de alguém, celebração de algo..."
@@ -863,4 +957,4 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
       </DialogContent>
     </Dialog>
   );
-}
+});

@@ -1,6 +1,7 @@
 import {
   expenses,
   occasionalGroups,
+  fixedExpenseTypes, // já visto
   supermarkets, // já visto
   restaurants,  // já visto
   serviceTypes,
@@ -13,6 +14,8 @@ import {
   type InsertExpense,
   type OccasionalGroup,
   type InsertOccasionalGroup,
+  type FixedExpenseType, // já visto
+  type InsertFixedExpenseType,  // já visto
   type Supermarket, // já visto
   type InsertSupermarket, // já visto
   type Restaurant,  // já visto
@@ -53,6 +56,12 @@ export interface IStorage {
     status: "open" | "closed",
   ): Promise<OccasionalGroup>;
 
+  //----------------------------------------------------------------------------
+  // Para manutenção da subcategoria 'fixed'
+  createFixedExpenseType(fixedExpenseType: InsertFixedExpenseType): Promise<FixedExpenseType>; 
+  getFixedExpenseTypes(): Promise<FixedExpenseType[]>; 
+  deleteFixedExpenseType(id: number): Promise<FixedExpenseType | null>;
+  
   // Para manutenção da subcategoria 'supermarket'
   addSupermarket(supermarket: InsertSupermarket): Promise<Supermarket>;
   deleteSupermarket(id: number): Promise<Supermarket | null>;
@@ -62,6 +71,7 @@ export interface IStorage {
   addRestaurant(restaurant: InsertRestaurant): Promise<Restaurant>;
   deleteRestaurant(id: number): Promise<Restaurant | null>;
   getRestaurants(): Promise<Restaurant[]>;
+  //----------------------------------------------------------------------------
   
 
   createServiceType(serviceType: InsertServiceType): Promise<ServiceType>;
@@ -281,6 +291,29 @@ export class DatabaseStorage implements IStorage {
     return group;
   }
 
+  //----------------------------------------------------------------------------
+  // Início das funções de manutenção da subcategoria 'fixed'
+  async createFixedExpenseType(insertFixedExpenseType: InsertFixedExpenseType): Promise<FixedExpenseType> { 
+    const [fixedExpenseType] = await db
+      .insert(fixedExpenseTypes)
+      .values(insertFixedExpenseType)
+      .returning();
+    return fixedExpenseType;
+  }
+
+  async deleteFixedExpenseType(id: number): Promise<FixedExpenseType | null> {
+    const [deletedFixedExpenseType] = await db
+      .delete(fixedExpenseTypes)
+      .where(eq(fixedExpenseTypes.id, id))
+      .returning();
+    return deletedFixedExpenseType || null;
+  }
+
+  async getFixedExpenseTypes(): Promise<FixedExpenseType[]> { 
+    return await db.select().from(fixedExpenseTypes).orderBy(fixedExpenseTypes.name);
+  }
+  // Fim das funções de manutenção da subcategoria 'fixed'
+
   // Início das funções de manutenção da subcategoria 'supermarket'
   async addSupermarket(
     insertSupermarket: InsertSupermarket,
@@ -329,7 +362,7 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(restaurants).orderBy(restaurants.name);
   }
   // Fim das funções de manutenção da subcategoria 'food'
-  
+  //----------------------------------------------------------------------------
 
   async createServiceType(
     insertServiceType: InsertServiceType,
@@ -424,6 +457,13 @@ class MemoryStorage implements IStorage {
   private expenses: Expense[] = [];
   private occasionalGroups: OccasionalGroup[] = [];
 
+  //----------------------------------------------------------------------------
+  private fixedExpenseTypes: FixedExpenseType[] = [
+    // já visto
+    { id: 1, name: "Aluguel do apartamento" },
+    { id: 2, name: "Conta de luz"" },
+    { id: 3, name: "Conta de água" },
+  ];
   private supermarkets: Supermarket[] = [
     // já visto
     { id: 1, name: "Villareal" },
@@ -437,6 +477,7 @@ class MemoryStorage implements IStorage {
     { id: 2, name: "Subway" },
     { id: 3, name: "Spoleto" },
   ];
+  //----------------------------------------------------------------------------
   
   private serviceTypes: ServiceType[] = [
     { id: 1, name: "Cleaning" },
@@ -478,8 +519,9 @@ class MemoryStorage implements IStorage {
       expenseType: insertExpense.expenseType,
       routineCategory: insertExpense.routineCategory ?? null,
       occasionalGroupId: insertExpense.occasionalGroupId || null,
-      supermarketId: insertExpense.supermarketId || null,
-      restaurantId: insertExpense.restaurantId || null,
+      fixedExpenseTypeId: insertExpense.fixedExpenseTypeId || null,  // já visto
+      supermarketId: insertExpense.supermarketId || null,  // já visto
+      restaurantId: insertExpense.restaurantId || null,  // já visto
       serviceTypeId: insertExpense.serviceTypeId || null,
       leisureTypeId: insertExpense.leisureTypeId || null,
       personalCareTypeId: insertExpense.personalCareTypeId || null,

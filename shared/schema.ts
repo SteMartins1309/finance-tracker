@@ -34,6 +34,7 @@ export const expenseTypeEnum = pgEnum("expense_type", [
 ]);
 // routineCategoryEnum: categoria de despesa rotineira
 export const routineCategoryEnum = pgEnum("routine_category", [
+  "fixed"
   "supermarket",
   "food",
   "services",
@@ -45,11 +46,7 @@ export const routineCategoryEnum = pgEnum("routine_category", [
   "family",
   "charity",
 ]);
-// purchaseTypeEnum: tipo de compra (presencial ou online)
-export const purchaseTypeEnum = pgEnum("purchase_type", [
-  "in-person",
-  "online",
-]);
+
 // transportModeEnum: modo de transporte
 export const transportModeEnum = pgEnum("transport_mode", [
   "car",
@@ -64,8 +61,20 @@ export const occasionalGroupStatusEnum = pgEnum("occasional_group_status", [
   "closed",
 ]);
 
+//-------------------------------------------------------------------------
 // (PRONTO) Utilizada na subcategoria 'food'
 export const occasionTypeEnum = pgEnum("occasion_type", ["normal", "special"]);
+
+// (PRONTO) Utilizada nas subcategorias 'food' e 'shopping' 
+export const purchaseTypeEnum = pgEnum("purchase_type", [
+  "in-person",
+  "online",
+]);
+
+// (PRONTO) Utilizada na subcategoria 'fixed'
+export const frequencyTypeEnum = pgEnum("frequency_type", ["weekly", "monthly", "annually"]);
+//-------------------------------------------------------------------------
+
 
 // TABELAS (pgTable): Cada uma dessas constantes (users, occasionalGroups, supermarkets, etc.) representa uma tabela no seu banco de dados PostgreSQL. Para cada tabela, você define:
 // id: Uma chave primária serial (auto-incremento).
@@ -86,6 +95,7 @@ export const occasionalGroups = pgTable("occasional_groups", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+//--------------------------------------------------------------------------
 // (PRONTO) supermarkets: tabela de supermercados
 export const supermarkets = pgTable("supermarkets", {
   id: serial("id").primaryKey(),
@@ -97,6 +107,13 @@ export const restaurants = pgTable("restaurants", {
   id: serial("id").primaryKey(),
   name: text("name").notNull().unique(),
 });
+
+// (PRONTO) fixedExpenseTypes: tabela de tipos de despesas fixas
+export const fixedExpenseTypes = pgTable("fixed_expense_types", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+});
+//--------------------------------------------------------------------------
 
 // serviceTypes: tabela de tipos de serviços
 export const serviceTypes = pgTable("service_types", {
@@ -141,6 +158,10 @@ export const expenses = pgTable("expenses", {
 
   // Cada campo é uma chave estrangeira (foreign keys) que referencia      uma das tabelas de categorias específicas
 
+  //--------------------------------------------------------------------------
+  // Para a subcategoria 'fixed'
+  fixedExpenseTypeId: integer("fixed_expense_type_id"),
+  frequency: frequencyTypeEnum("frequency"),
   // Para a subcategoria 'supermarket'
   supermarketId: integer("supermarket_id"),
   // Para a subcategoria 'food'
@@ -148,6 +169,7 @@ export const expenses = pgTable("expenses", {
   occasionType: occasionTypeEnum("occasion_type").default("normal"),
   specialOccasionDescription: text("special_occasion_description"),
   foodPurchaseType: purchaseTypeEnum("food_purchase_type"),
+  //-------------------------------------------------------------------------
 
   serviceTypeId: integer("service_type_id"),
   leisureTypeId: integer("leisure_type_id"),
@@ -173,6 +195,12 @@ export const expensesRelations = relations(expenses, ({ one }) => ({
     fields: [expenses.occasionalGroupId],
     references: [occasionalGroups.id],
   }),
+  //--------------------------------------------------------------------------
+  fixedExpenseType: one(fixedExpenseTypes, {
+    // Define que cada despesa pode estar associada a um tipo de despesa fixa específico
+    fields: [expenses.fixedExpenseTypeId],
+    references: [fixedExpenseTypes.id],
+  })
   supermarket: one(supermarkets, {
     // Define que cada despesa pode estar associada a um supermercado específico
     fields: [expenses.supermarketId],
@@ -183,6 +211,7 @@ export const expensesRelations = relations(expenses, ({ one }) => ({
     fields: [expenses.restaurantId],
     references: [restaurants.id],
   }),
+  //--------------------------------------------------------------------------
   serviceType: one(serviceTypes, {
     fields: [expenses.serviceTypeId],
     references: [serviceTypes.id],
@@ -216,6 +245,12 @@ export const occasionalGroupsRelations = relations(
   }),
 );
 
+//--------------------------------------------------------------------------
+// Define que um tipo de despesa fixa pode ter várias despesas associadas
+export const fixedExpenseTypesRelations = relations(fixedExpenseTypes, ({ many }) => ({ 
+  expenses: many(expenses),
+}));
+
 // Define que um supermercado pode ter várias despesas associadas
 export const supermarketsRelations = relations(supermarkets, ({ many }) => ({
   expenses: many(expenses),
@@ -225,6 +260,7 @@ export const supermarketsRelations = relations(supermarkets, ({ many }) => ({
 export const restaurantsRelations = relations(restaurants, ({ many }) => ({
   expenses: many(expenses),
 }));
+//--------------------------------------------------------------------------
 
 export const serviceTypesRelations = relations(serviceTypes, ({ many }) => ({
   expenses: many(expenses),
@@ -277,6 +313,12 @@ export const insertExpenseSchema = createInsertSchema(expenses)
     purchaseDate: z.string().transform((str) => new Date(str)),
   });
 
+//--------------------------------------------------------------------------
+// Define esquema de inserção para a tabela de tipos de despesas fixas
+export const insertFixedExpenseTypeSchema = createInsertSchema(fixedExpenseTypes).omit({ 
+  id: true,
+});
+
 // Define esquema de inserção para a tabela de supermercados
 export const insertSupermarketSchema = createInsertSchema(supermarkets).omit({
   id: true,
@@ -286,6 +328,7 @@ export const insertSupermarketSchema = createInsertSchema(supermarkets).omit({
 export const insertRestaurantSchema = createInsertSchema(restaurants).omit({
   id: true,
 });
+//--------------------------------------------------------------------------
 
 export const insertServiceTypeSchema = createInsertSchema(serviceTypes).omit({
   id: true,
@@ -324,6 +367,11 @@ export type OccasionalGroup = typeof occasionalGroups.$inferSelect;
 export type InsertExpense = z.infer<typeof insertExpenseSchema>;
 export type Expense = typeof expenses.$inferSelect;
 
+//--------------------------------------------------------------------------
+// Define o tipo TypeScript para a inserção e leitura de tipos de despesas fixas
+export type InsertFixedExpenseType = z.infer<typeof insertFixedExpenseTypeSchema>; 
+export type FixedExpenseType = typeof fixedExpenseTypes.$inferSelect;
+
 // Define o tipo TypeScript para a inserção e leitura de supermercados
 export type InsertSupermarket = z.infer<typeof insertSupermarketSchema>;
 export type Supermarket = typeof supermarkets.$inferSelect;
@@ -331,6 +379,7 @@ export type Supermarket = typeof supermarkets.$inferSelect;
 // Define o tipo TypeScript para a inserção e leitura de restaurantes
 export type InsertRestaurant = z.infer<typeof insertRestaurantSchema>;
 export type Restaurant = typeof restaurants.$inferSelect;
+//--------------------------------------------------------------------------
 
 export type InsertServiceType = z.infer<typeof insertServiceTypeSchema>;
 export type ServiceType = typeof serviceTypes.$inferSelect;

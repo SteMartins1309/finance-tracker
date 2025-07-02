@@ -42,6 +42,7 @@ import {
   Gift,
   Calendar,
   Trash2,
+  DollarSign,
 } from "lucide-react";
 import {
   // <--- Adicione estas importações para o AlertDialog
@@ -89,6 +90,11 @@ export default function Categories() {
   });
 
 
+  //-------------------------------------------------------------------------------
+  // Hook para buscar a lista de tipos de despesas fixas
+  const { data: fixedExpenseTypes } = useQuery({ 
+    queryKey: ["/api/fixed-expense-types"],
+  });
   
   // Hook para buscar a lista de supermercados
   const { data: supermarkets = [] } = useQuery({
@@ -103,8 +109,12 @@ export default function Categories() {
     queryKey: ["/api/restaurants"],
   });
 
+  // Hook para gerenciar o estado do modal de confirmação de exclusão de tipo de despesa fixa
+  const [fixedTypeToDelete, setFixedTypeToDelete] = useState<{ id: number; name: string } | null>(null);
+
   // Hook para gerenciar o estado do modal de confirmação de exclusão de restaurante
   const [restaurantToDelete, setRestaurantToDelete] = useState<{ id: number; name: string } | null>(null);
+  //-------------------------------------------------------------------------------
 
 
   
@@ -159,7 +169,31 @@ export default function Categories() {
   });
 
 
-  
+  // MUTAÇÕES
+  //-------------------------------------------------------------------------------
+  // Mutação para excluir um tipo de despesa fixa
+  const deleteFixedExpenseTypeMutation = useMutation({ 
+    mutationFn: async (id: number) => {
+      return await apiRequest("DELETE", `/api/fixed-expense-types/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/fixed-expense-types"] });
+      toast({
+        title: "Success",
+        description: "Fixed expense type deleted successfully!",
+      });
+      setFixedTypeToDelete(null);
+    },
+    onError: (error: any) => {
+      console.error("Error details:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete fixed expense type. Please try again.",
+        variant: "destructive",
+      });
+      setFixedTypeToDelete(null);
+    },
+  });
   
   // Mutação para excluir um supermercado
   const deleteSupermarketMutation = useMutation({
@@ -208,6 +242,7 @@ export default function Categories() {
       setRestaurantToDelete(null); // Fecha o modal de confirmação mesmo com erro
     },
   });
+  //-------------------------------------------------------------------------------
 
   
 
@@ -221,6 +256,12 @@ export default function Categories() {
   };
 
 
+  // FUNÇÕES
+  //-------------------------------------------------------------------------------
+  // Função para lidar com a exclusão de um tipo de despesa fixa
+  const handleDeleteFixedType = (fixedType: { id: number; name: string }) => { 
+    setFixedTypeToDelete(fixedType);
+  };
   
   // Função para lidar com a exclusão de um supermercado
   const handleDeleteSupermarket = (supermarket: { id: number; name: string }) => {
@@ -231,18 +272,17 @@ export default function Categories() {
   const handleDeleteRestaurant = (restaurant: { id: number; name: string }) => { 
     setRestaurantToDelete(restaurant);// Abre o modal de confirmação
   };
-
+  //-------------------------------------------------------------------------------
 
 
 
     
   const routineCategories = [
     {
-      name: "Supermarket",
-      icon: ShoppingCart,
-      count: supermarkets?.length || 0,
-    },
-    { name: "Food", icon: Utensils, count: restaurants?.length || 0 },
+    { name: "Fixo", icon: DollarSign, count: fixedExpenseTypes?.length || 0 },
+    { name: "Supermercado", icon: ShoppingCart, count: supermarkets?.length || 0},
+    { name: "Alimentação", icon: Utensils, count: restaurants?.length || 0 },
+    
     { name: "Services", icon: Home, count: 0 },
     { name: "Leisure", icon: Gamepad2, count: 0 },
     { name: "Personal Care", icon: Scissors, count: 0 },
@@ -343,6 +383,42 @@ export default function Categories() {
                         {category.name}
                       </p>
                       <p className="text-sm text-text-secondary">
+
+                        {/*  Início da subcategoria 'fixed'  */}
+                        {category.name === "Fixed" && ( 
+                                          <>
+                                            {fixedExpenseTypes?.map((type: any) => (
+                                              <div key={type.id} className="flex items-center justify-between text-xs py-0.5 ml-2">
+                                                <span>{type.name}</span>
+                                                <Button
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  className="h-6 w-6"
+                                                  onClick={() => handleDeleteFixedType(type)} // <--- Chamada para deletar o tipo de despesa fixa
+                                                >
+                                                  <Trash2 className="h-3 w-3 text-red-500" />
+                                                </Button>
+                                              </div>
+                                            ))}
+                                            {fixedExpenseTypes?.length === 0 && <span className="ml-2">No fixed expense types added.</span>}
+                                          </>
+                                        )}
+                                        {/* Para as outras categorias que não listam sub-itens, manter a contagem ou descrição padrão */}
+                                        {!(category.name === "Supermarket" || category.name === "Food" || category.name === "Fixed") &&
+                                          `${category.count} ${category.count === 1 ? 'item' : 'items'} configured`
+                                        }
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    {/* ... botão Edit existente ... */}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </CardContent>
+                        </Card>
+                        {/*  Fim da subcategoria 'fixed'  */}
                         
                         {/*  Início da subcategoria 'supermarket'  */}
                         {category.name === "Supermarket" && (
@@ -354,7 +430,7 @@ export default function Categories() {
                                   variant="ghost"
                                   size="icon"
                                   className="h-6 w-6"
-                                  onClick={() => handleDeleteSupermarket(sm)} // Chamada para o handleDeleteSupermarket
+                                  onClick={() => handleDeleteSupermarket(sm)} // Chamada para deletar o supermercado
                                 >
                                   <Trash2 className="h-3 w-3 text-red-500" />
                                 </Button>
@@ -375,7 +451,7 @@ export default function Categories() {
                                   variant="ghost"
                                   size="icon"
                                   className="h-6 w-6"
-                                  onClick={() => handleDeleteRestaurant(res)} // Chamada para o handleDeleteRestaurant
+                                  onClick={() => handleDeleteRestaurant(res)} // Chamada para deletar o restaurante
                                 >
                                   <Trash2 className="h-3 w-3 text-red-500" />
                                 </Button>
@@ -490,6 +566,40 @@ export default function Categories() {
           </CardContent>
         </Card>
       </div> 
+
+      {/* AlertDialog de Confirmação para Exclusão de Tipo de Despesa Fixa */}
+      <AlertDialog
+        open={!!fixedTypeToDelete}
+        onOpenChange={(open) => !open && setFixedTypeToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete{" "}
+              <span className="font-semibold text-primary">{fixedTypeToDelete?.name}</span>{" "}
+              from your fixed expense types list.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteFixedExpenseTypeMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (fixedTypeToDelete) {
+                  deleteFixedExpenseTypeMutation.mutate(fixedTypeToDelete.id);
+                }
+              }}
+              disabled={deleteFixedExpenseTypeMutation.isPending}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {deleteFixedExpenseTypeMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>  {/* Fim AlertDialog de Confirmação para Exclusão de Tipo de Despesa Fixa */}
+
       {/* AlertDialog de Confirmação para Exclusão de Supermercado */}
       <AlertDialog
         open={!!supermarketToDelete}
@@ -497,16 +607,16 @@ export default function Categories() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete{" "}
+              Essa ação não poderá ser desfeita. Isso vai deletar{" "}
               <span className="font-semibold text-primary">{supermarketToDelete?.name}</span>{" "}
-              from your supermarkets list.
+              permanentemente da sua lista de supermercados.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleteSupermarketMutation.isPending}>
-              Cancel
+              Cancelar
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
@@ -517,11 +627,11 @@ export default function Categories() {
               disabled={deleteSupermarketMutation.isPending}
               className="bg-destructive hover:bg-destructive/90"
             >
-              {deleteSupermarketMutation.isPending ? "Deleting..." : "Delete"}
+              {deleteSupermarketMutation.isPending ? "Deletando..." : "Deletar"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
-      </AlertDialog>
+      </AlertDialog>    {/* Fim do AlertDialog de Confirmação para Exclusão de Supermercado */}
       
       {/* AlertDialog de Confirmação para Exclusão de Restaurante */}
       <AlertDialog
@@ -530,16 +640,16 @@ export default function Categories() {
       >
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+              <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
               <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete{" "}
+                Essa ação não poderá ser desfeita. Isso vai deletar{" "}
                 <span className="font-semibold text-primary">{restaurantToDelete?.name}</span>{" "}
-                from your restaurants list.
+                permanentemente da sua lista de restaurantes.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel disabled={deleteRestaurantMutation.isPending}>
-                Cancel
+                Cancelar
               </AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => {
@@ -550,11 +660,13 @@ export default function Categories() {
                 disabled={deleteRestaurantMutation.isPending}
                 className="bg-destructive hover:bg-destructive/90"
               >
-                {deleteRestaurantMutation.isPending ? "Deleting..." : "Delete"}
+                {deleteRestaurantMutation.isPending ? "Deletando..." : "Deletar"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
-        </AlertDialog>
+        </AlertDialog>  {/* Fim AlertDialog de Confirmação para Exclusão de Restaurante */}
+
+
 
   
     </div>

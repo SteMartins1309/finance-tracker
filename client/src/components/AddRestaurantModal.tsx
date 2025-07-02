@@ -25,7 +25,7 @@ import { useToast } from "@/hooks/use-toast";
 
 // Esquema de validação com Zod
 const schema = z.object({
-  name: z.string().min(2, "Restaurant name is required"),
+  name: z.string().min(2, "Nome do restaurante é requerido"),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -49,16 +49,16 @@ export function AddRestaurantModal({ open, onOpenChange }: Props) {
     mutationFn: (data: FormData) =>
       apiRequest("POST", "/api/restaurants", data),
     onSuccess: (newRestaurant) => {
-      toast({ title: "Success", description: "Restaurant added!" });
+      toast({ title: "Successo", description: "Restaurante adicionado!" });
       queryClient.invalidateQueries({ queryKey: ["/api/restaurants"] });
       onOpenChange(false);
       form.reset();
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
+        title: "Erro",
         description:
-          error?.response?.data?.message || "Could not add restaurant",
+          error?.response?.data?.message || "Não foi possível adicionar restaurante.",
         variant: "destructive",
       });
     },
@@ -68,7 +68,7 @@ export function AddRestaurantModal({ open, onOpenChange }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add Supermarket</DialogTitle>
+          <DialogTitle>Adicionar Restaurante</DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
@@ -85,7 +85,7 @@ export function AddRestaurantModal({ open, onOpenChange }: Props) {
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Restaurant Name</FormLabel>
+                  <FormLabel>Nome do Restaurante</FormLabel>
                   <FormControl>
                     <Input
                       placeholder="ex: Spoleto, Mc Donald's..."
@@ -100,7 +100,7 @@ export function AddRestaurantModal({ open, onOpenChange }: Props) {
 
             <div className="flex justify-end">
               <Button type="submit" disabled={mutation.isPending}>
-                {mutation.isPending ? "Saving..." : "Save"}
+                {mutation.isPending ? "Salvando..." : "Salvo"}
               </Button>
             </div>
           </form>

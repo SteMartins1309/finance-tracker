@@ -4,7 +4,8 @@ import { storage } from "./storage";
 import {
   insertExpenseSchema,
   insertOccasionalGroupSchema,
-  
+
+  insertFixedExpenseTypeSchema,  // já visto
   insertSupermarketSchema,  // já visto
   insertRestaurantSchema,  // já visto
   
@@ -152,7 +153,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  //----------------------------------------------------------------------------
+  // Início das rotas de manutenção da subcategoria 'fixed'
+  app.post("/api/fixed-expense-types", async (req, res) => { 
+    try {
+      const fixedTypeData = insertFixedExpenseTypeSchema.parse(req.body);
+      const newFixedType = await storage.createFixedExpenseType(fixedTypeData);
+      res.status(201).json(newFixedType);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        console.error("Zod Validation Error for fixed expense type:", error.issues);
+        return res.status(400).json({ errors: error.issues });
+      }
+      console.error("Server error creating fixed expense type:", error);
+      res.status(500).json({ error: "Failed to create fixed expense type" });
+    }
+  });
 
+  app.delete("/api/fixed-expense-types/:id", async (req, res) => { 
+    try {
+      const id = parseInt(req.params.id);
+
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid ID" });
+      }
+
+      const deleted = await storage.deleteFixedExpenseType(id);
+
+      if (!deleted) {
+        return res.status(404).json({ error: "Fixed expense type not found" });
+      }
+
+      res.status(200).json({ message: "Fixed expense type deleted successfully", deleted });
+    } catch (error) {
+      console.error("Error deleting fixed expense type:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ errors: error.issues });
+      }
+      res.status(500).json({ error: "Failed to delete fixed expense type" });
+    }
+  });
+
+  app.get("/api/fixed-expense-types", async (req, res) => { 
+    try {
+      const fixedTypes = await storage.getFixedExpenseTypes();
+      res.json(fixedTypes);
+    } catch (error) {
+      console.error("Error fetching fixed expense types:", error);
+      res.status(500).json({ error: "Failed to fetch fixed expense types" });
+    }
+  });
+  // Fim das rotas de manutenção da subcategoria 'fixed'
+  
   // Início das rotas de manutenção da subcategoria 'supermarket'
   app.post("/api/supermarkets", async (req, res) => {
     try {
@@ -245,7 +297,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   // Fim das rotas de manutenção da subcategoria 'food'
-
+  //----------------------------------------------------------------------------
+  
   
   app.get("/api/service-types", async (req, res) => {
     try {

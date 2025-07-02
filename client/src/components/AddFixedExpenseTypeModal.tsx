@@ -1,5 +1,3 @@
-// FUNÇÃO NA OPERAÇÃO: Adiciona um novo supermercado à lista de supermercados
-
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -25,7 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 
 // Esquema de validação com Zod
 const schema = z.object({
-  name: z.string().min(2, "Nome do supermercado é requerido"),
+  name: z.string().min(2, "Fixed expense type name is required"),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -35,8 +33,7 @@ interface Props {
   onOpenChange: (open: boolean) => void;
 }
 
-// COMPONENTE: O componente AddSupermarketModal é responsável por renderizar o formulário modal e gerenciar o estado do formulário e as chamadas de API. Recebe dois props: open: controla se o modal está aberto. onOpenChange: função para abrir/fechar o modal.
-export function AddSupermarketModal({ open, onOpenChange }: Props) {
+export function AddFixedExpenseTypeModal({ open, onOpenChange }: Props) { // <--- NOVO COMPONENTE
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { name: "" },
@@ -46,20 +43,18 @@ export function AddSupermarketModal({ open, onOpenChange }: Props) {
   const { toast } = useToast();
 
   const mutation = useMutation({
-    mutationFn: (data: FormData) =>
-      apiRequest("POST", "/api/supermarkets", data),
-    onSuccess: (newSupermarket) => {
-      toast({ title: "Successo", description: "Supermercado adicionado!" });
-      queryClient.invalidateQueries({ queryKey: ["/api/supermarkets"] });
+    mutationFn: (data: FormData) => apiRequest("POST", "/api/fixed-expense-types", data), // <--- Rota POST para tipos fixos
+    onSuccess: () => {
+      toast({ title: "Success", description: "Fixed expense type added!" });
+      queryClient.invalidateQueries({ queryKey: ["/api/fixed-expense-types"] }); // <--- Invalida query
       onOpenChange(false);
       form.reset();
     },
     onError: (error: any) => {
       toast({
-        title: "Erro",
+        title: "Error",
         description:
-          error?.response?.data?.message ||
-          "Não foi possível adicionar supermercado",
+          error?.response?.data?.message || "Could not add fixed expense type",
         variant: "destructive",
       });
     },
@@ -69,16 +64,12 @@ export function AddSupermarketModal({ open, onOpenChange }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Adicionar Supermercado</DialogTitle>
+          <DialogTitle>Add Fixed Expense Type</DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
           <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              form.handleSubmit((data) => mutation.mutate(data))(e);
-            }}
+            onSubmit={form.handleSubmit((data) => mutation.mutate(data))}
             className="space-y-4"
           >
             <FormField
@@ -86,10 +77,10 @@ export function AddSupermarketModal({ open, onOpenChange }: Props) {
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nome do Supermercado</FormLabel>
+                  <FormLabel>Type Name</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="ex: Roldão, Carrefour..."
+                      placeholder="e.g. Rent, Subscription, Mortgage..."
                       autoFocus
                       {...field}
                     />
@@ -101,7 +92,7 @@ export function AddSupermarketModal({ open, onOpenChange }: Props) {
 
             <div className="flex justify-end">
               <Button type="submit" disabled={mutation.isPending}>
-                {mutation.isPending ? "Salvando..." : "Salvo"}
+                {mutation.isPending ? "Saving..." : "Save"}
               </Button>
             </div>
           </form>
