@@ -3,8 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient"; // Corrigi o caminho de importação aqui, estava com "=>"
+import { useToast } from "@/hooks/use-toast"; // Corrigi o caminho de importação aqui, estava com "=>"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -42,10 +42,9 @@ import {
   Gift,
   Calendar,
   Trash2,
-  DollarSign,
+  DollarSign, // Ícone para "Fixed"
 } from "lucide-react";
 import {
-  // <--- Adicione estas importações para o AlertDialog
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -76,8 +75,6 @@ export default function Categories() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-
-
   const { data: occasionalGroups = [], isLoading: groupsLoading } = useQuery({
     queryKey: ["/api/occasional-groups"],
   });
@@ -89,25 +86,26 @@ export default function Categories() {
     },
   });
 
-
   //-------------------------------------------------------------------------------
   // Hook para buscar a lista de tipos de despesas fixas
-  const { data: fixedExpenseTypes } = useQuery({ 
+  const { data: fixedExpenseTypes = [] } = useQuery({
     queryKey: ["/api/fixed-expense-types"],
   });
-  
+
   // Hook para buscar a lista de supermercados
   const { data: supermarkets = [] } = useQuery({
     queryKey: ["/api/supermarkets"],
   });
 
-  // Hook para gerenciar o estado do modal de confirmação de exclusão de supermercado
-  const [supermarketToDelete, setSupermarketToDelete] = useState<{ id: number; name: string } | null>(null);
-
   // Hook para buscar a lista de restaurantes
   const { data: restaurants = [] } = useQuery({
     queryKey: ["/api/restaurants"],
   });
+
+  
+
+  // Hook para gerenciar o estado do modal de confirmação de exclusão de supermercado
+  const [supermarketToDelete, setSupermarketToDelete] = useState<{ id: number; name: string } | null>(null);
 
   // Hook para gerenciar o estado do modal de confirmação de exclusão de tipo de despesa fixa
   const [fixedTypeToDelete, setFixedTypeToDelete] = useState<{ id: number; name: string } | null>(null);
@@ -116,8 +114,6 @@ export default function Categories() {
   const [restaurantToDelete, setRestaurantToDelete] = useState<{ id: number; name: string } | null>(null);
   //-------------------------------------------------------------------------------
 
-
-  
   const createGroupMutation = useMutation({
     mutationFn: async (data: OccasionalGroupFormData) => {
       return await apiRequest("POST", "/api/occasional-groups", data);
@@ -168,11 +164,10 @@ export default function Categories() {
     },
   });
 
-
   // MUTAÇÕES
   //-------------------------------------------------------------------------------
   // Mutação para excluir um tipo de despesa fixa
-  const deleteFixedExpenseTypeMutation = useMutation({ 
+  const deleteFixedExpenseTypeMutation = useMutation({
     mutationFn: async (id: number) => {
       return await apiRequest("DELETE", `/api/fixed-expense-types/${id}`);
     },
@@ -194,7 +189,7 @@ export default function Categories() {
       setFixedTypeToDelete(null);
     },
   });
-  
+
   // Mutação para excluir um supermercado
   const deleteSupermarketMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -220,7 +215,7 @@ export default function Categories() {
   });
 
   // Mutação para excluir um restaurante
-  const deleteRestaurantMutation = useMutation({ 
+  const deleteRestaurantMutation = useMutation({
     mutationFn: async (id: number) => {
       return await apiRequest("DELETE", `/api/restaurants/${id}`);
     },
@@ -244,8 +239,6 @@ export default function Categories() {
   });
   //-------------------------------------------------------------------------------
 
-  
-
   const onSubmit = (data: OccasionalGroupFormData) => {
     createGroupMutation.mutate(data);
   };
@@ -255,34 +248,29 @@ export default function Categories() {
     toggleGroupStatusMutation.mutate({ id: group.id, status: newStatus });
   };
 
-
   // FUNÇÕES
   //-------------------------------------------------------------------------------
   // Função para lidar com a exclusão de um tipo de despesa fixa
-  const handleDeleteFixedType = (fixedType: { id: number; name: string }) => { 
+  const handleDeleteFixedType = (fixedType: { id: number; name: string }) => {
     setFixedTypeToDelete(fixedType);
   };
-  
+
   // Função para lidar com a exclusão de um supermercado
   const handleDeleteSupermarket = (supermarket: { id: number; name: string }) => {
     setSupermarketToDelete(supermarket); // Abre o modal de confirmação
   };
 
   // Função para lidar com a exclusão de um restaurante
-  const handleDeleteRestaurant = (restaurant: { id: number; name: string }) => { 
-    setRestaurantToDelete(restaurant);// Abre o modal de confirmação
+  const handleDeleteRestaurant = (restaurant: { id: number; name: string }) => {
+    setRestaurantToDelete(restaurant); // Abre o modal de confirmação
   };
   //-------------------------------------------------------------------------------
 
-
-
-    
   const routineCategories = [
-    {
     { name: "Fixo", icon: DollarSign, count: fixedExpenseTypes?.length || 0 },
-    { name: "Supermercado", icon: ShoppingCart, count: supermarkets?.length || 0},
+    { name: "Supermercado", icon: ShoppingCart, count: supermarkets?.length || 0 },
     { name: "Alimentação", icon: Utensils, count: restaurants?.length || 0 },
-    
+
     { name: "Services", icon: Home, count: 0 },
     { name: "Leisure", icon: Gamepad2, count: 0 },
     { name: "Personal Care", icon: Scissors, count: 0 },
@@ -383,44 +371,28 @@ export default function Categories() {
                         {category.name}
                       </p>
                       <p className="text-sm text-text-secondary">
+                        {/* Início da subcategoria 'fixed' */}
+                        {category.name === "Fixed" && (
+                          <>
+                            {fixedExpenseTypes?.map((type: any) => (
+                              <div key={type.id} className="flex items-center justify-between text-xs py-0.5 ml-2">
+                                <span>{type.name}</span>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6"
+                                  onClick={() => handleDeleteFixedType(type)} // Chamada para deletar o tipo de despesa fixa
+                                >
+                                  <Trash2 className="h-3 w-3 text-red-500" />
+                                </Button>
+                              </div>
+                            ))}
+                            {fixedExpenseTypes?.length === 0 && <span className="ml-2">No fixed expense types added.</span>}
+                          </>
+                        )}
+                        {/* Fim da subcategoria 'fixed' */}
 
-                        {/*  Início da subcategoria 'fixed'  */}
-                        {category.name === "Fixed" && ( 
-                                          <>
-                                            {fixedExpenseTypes?.map((type: any) => (
-                                              <div key={type.id} className="flex items-center justify-between text-xs py-0.5 ml-2">
-                                                <span>{type.name}</span>
-                                                <Button
-                                                  variant="ghost"
-                                                  size="icon"
-                                                  className="h-6 w-6"
-                                                  onClick={() => handleDeleteFixedType(type)} // <--- Chamada para deletar o tipo de despesa fixa
-                                                >
-                                                  <Trash2 className="h-3 w-3 text-red-500" />
-                                                </Button>
-                                              </div>
-                                            ))}
-                                            {fixedExpenseTypes?.length === 0 && <span className="ml-2">No fixed expense types added.</span>}
-                                          </>
-                                        )}
-                                        {/* Para as outras categorias que não listam sub-itens, manter a contagem ou descrição padrão */}
-                                        {!(category.name === "Supermarket" || category.name === "Food" || category.name === "Fixed") &&
-                                          `${category.count} ${category.count === 1 ? 'item' : 'items'} configured`
-                                        }
-                                      </p>
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center space-x-2">
-                                    {/* ... botão Edit existente ... */}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </CardContent>
-                        </Card>
-                        {/*  Fim da subcategoria 'fixed'  */}
-                        
-                        {/*  Início da subcategoria 'supermarket'  */}
+                        {/* Início da subcategoria 'supermarket' */}
                         {category.name === "Supermarket" && (
                           <>
                             {supermarkets?.map((sm: any) => (
@@ -439,15 +411,15 @@ export default function Categories() {
                             {supermarkets?.length === 0 && <span className="ml-2">No supermarkets added.</span>}
                           </>
                         )}
-                        {/*  Fim da subcategoria 'supermarket'  */}
+                        {/* Fim da subcategoria 'supermarket' */}
 
-                        {/*  Início da subcategoria 'food'  */}
-                        {category.name === "Food" && ( 
+                        {/* Início da subcategoria 'food' */}
+                        {category.name === "Food" && (
                           <>
                             {restaurants?.map((res: any) => (
                               <div key={res.id} className="flex items-center justify-between text-xs py-0.5 ml-2">
                                 <span>{res.name}</span>
-                                <Button 
+                                <Button
                                   variant="ghost"
                                   size="icon"
                                   className="h-6 w-6"
@@ -460,11 +432,12 @@ export default function Categories() {
                             {restaurants?.length === 0 && <span className="ml-2">No restaurants added.</span>}
                           </>
                         )}
-                        {/*  Fim da subcategoria 'food'  */}
+                        {/* Fim da subcategoria 'food' */}
 
-                        
-                        {category.count}{" "}
-                        {category.count === 1 ? "item" : "items"} configured
+                        {/* Correção da lógica de exibição da contagem padrão */}
+                        {!(category.name === "Supermarket" || category.name === "Food" || category.name === "Fixed") &&
+                          `${category.count} ${category.count === 1 ? 'item' : 'items'} configured`
+                        }
                       </p>
                     </div>
                   </div>
@@ -565,7 +538,7 @@ export default function Categories() {
             )}
           </CardContent>
         </Card>
-      </div> 
+      </div>
 
       {/* AlertDialog de Confirmação para Exclusão de Tipo de Despesa Fixa */}
       <AlertDialog
@@ -598,8 +571,8 @@ export default function Categories() {
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
-      </AlertDialog>  {/* Fim AlertDialog de Confirmação para Exclusão de Tipo de Despesa Fixa */}
-
+      </AlertDialog>{" "}
+      {/* Fim AlertDialog de Confirmação para Exclusão de Tipo de Despesa Fixa */}
       {/* AlertDialog de Confirmação para Exclusão de Supermercado */}
       <AlertDialog
         open={!!supermarketToDelete}
@@ -631,44 +604,41 @@ export default function Categories() {
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
-      </AlertDialog>    {/* Fim do AlertDialog de Confirmação para Exclusão de Supermercado */}
-      
+      </AlertDialog>{" "}
+      {/* Fim do AlertDialog de Confirmação para Exclusão de Supermercado */}
       {/* AlertDialog de Confirmação para Exclusão de Restaurante */}
       <AlertDialog
         open={!!restaurantToDelete}
         onOpenChange={(open) => !open && setRestaurantToDelete(null)}
       >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Essa ação não poderá ser desfeita. Isso vai deletar{" "}
-                <span className="font-semibold text-primary">{restaurantToDelete?.name}</span>{" "}
-                permanentemente da sua lista de restaurantes.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={deleteRestaurantMutation.isPending}>
-                Cancelar
-              </AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => {
-                  if (restaurantToDelete) {
-                    deleteRestaurantMutation.mutate(restaurantToDelete.id);
-                  }
-                }}
-                disabled={deleteRestaurantMutation.isPending}
-                className="bg-destructive hover:bg-destructive/90"
-              >
-                {deleteRestaurantMutation.isPending ? "Deletando..." : "Deletar"}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>  {/* Fim AlertDialog de Confirmação para Exclusão de Restaurante */}
-
-
-
-  
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Essa ação não poderá ser desfeita. Isso vai deletar{" "}
+              <span className="font-semibold text-primary">{restaurantToDelete?.name}</span>{" "}
+              permanentemente da sua lista de restaurantes.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteRestaurantMutation.isPending}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (restaurantToDelete) {
+                  deleteRestaurantMutation.mutate(restaurantToDelete.id);
+                }
+              }}
+              disabled={deleteRestaurantMutation.isPending}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {deleteRestaurantMutation.isPending ? "Deletando..." : "Deletar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>{" "}
+      {/* Fim AlertDialog de Confirmação para Exclusão de Restaurante */}
     </div>
   );
 }

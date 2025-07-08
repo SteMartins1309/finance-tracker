@@ -58,19 +58,19 @@ export interface IStorage {
 
   //----------------------------------------------------------------------------
   // Para manutenção da subcategoria 'fixed'
-  createFixedExpenseType(fixedExpenseType: InsertFixedExpenseType): Promise<FixedExpenseType>; 
+  addFixedExpenseType(fixedExpenseType: InsertFixedExpenseType): Promise<FixedExpenseType>; 
   getFixedExpenseTypes(): Promise<FixedExpenseType[]>; 
   deleteFixedExpenseType(id: number): Promise<FixedExpenseType | null>;
   
   // Para manutenção da subcategoria 'supermarket'
   addSupermarket(supermarket: InsertSupermarket): Promise<Supermarket>;
-  deleteSupermarket(id: number): Promise<Supermarket | null>;
   getSupermarkets(): Promise<Supermarket[]>;
+  deleteSupermarket(id: number): Promise<Supermarket | null>;
 
   // Para manutenção da subcategoria 'food'
   addRestaurant(restaurant: InsertRestaurant): Promise<Restaurant>;
-  deleteRestaurant(id: number): Promise<Restaurant | null>;
   getRestaurants(): Promise<Restaurant[]>;
+  deleteRestaurant(id: number): Promise<Restaurant | null>;
   //----------------------------------------------------------------------------
   
 
@@ -293,7 +293,7 @@ export class DatabaseStorage implements IStorage {
 
   //----------------------------------------------------------------------------
   // Início das funções de manutenção da subcategoria 'fixed'
-  async createFixedExpenseType(insertFixedExpenseType: InsertFixedExpenseType): Promise<FixedExpenseType> { 
+  async addFixedExpenseType(insertFixedExpenseType: InsertFixedExpenseType): Promise<FixedExpenseType> { 
     const [fixedExpenseType] = await db
       .insert(fixedExpenseTypes)
       .values(insertFixedExpenseType)
@@ -301,16 +301,16 @@ export class DatabaseStorage implements IStorage {
     return fixedExpenseType;
   }
 
+  async getFixedExpenseTypes(): Promise<FixedExpenseType[]> { 
+    return await db.select().from(fixedExpenseTypes).orderBy(fixedExpenseTypes.name);
+  }
+  
   async deleteFixedExpenseType(id: number): Promise<FixedExpenseType | null> {
     const [deletedFixedExpenseType] = await db
       .delete(fixedExpenseTypes)
       .where(eq(fixedExpenseTypes.id, id))
       .returning();
     return deletedFixedExpenseType || null;
-  }
-
-  async getFixedExpenseTypes(): Promise<FixedExpenseType[]> { 
-    return await db.select().from(fixedExpenseTypes).orderBy(fixedExpenseTypes.name);
   }
   // Fim das funções de manutenção da subcategoria 'fixed'
 
@@ -324,6 +324,13 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return supermarket;
   }
+
+  async getSupermarkets(): Promise<Supermarket[]> {
+    return await db
+      .select()
+      .from(supermarkets)
+      .orderBy(supermarkets.name);
+  }
   
   async deleteSupermarket(id: number): Promise<Supermarket | null> {
     const [deletedSupermarket] = await db
@@ -331,13 +338,6 @@ export class DatabaseStorage implements IStorage {
       .where(eq(supermarkets.id, id))
       .returning();
     return deletedSupermarket || null;
-  }
-
-  async getSupermarkets(): Promise<Supermarket[]> {
-    return await db
-      .select()
-      .from(supermarkets)
-      .orderBy(supermarkets.name);
   }
   // Fim das funções de manutenção da subcategoria 'supermarket'
 
@@ -350,16 +350,16 @@ export class DatabaseStorage implements IStorage {
     return restaurant;
   }
 
+  async getRestaurants(): Promise<Restaurant[]> {
+    return await db.select().from(restaurants).orderBy(restaurants.name);
+  }
+
   async deleteRestaurant(id: number):     Promise<Restaurant | null> { 
     const [deletedRestaurant] = await db
       .delete(restaurants)
       .where(eq(restaurants.id, id))
       .returning();
     return deletedRestaurant || null;
-  }
-  
-  async getRestaurants(): Promise<Restaurant[]> {
-    return await db.select().from(restaurants).orderBy(restaurants.name);
   }
   // Fim das funções de manutenção da subcategoria 'food'
   //----------------------------------------------------------------------------
@@ -461,9 +461,10 @@ class MemoryStorage implements IStorage {
   private fixedExpenseTypes: FixedExpenseType[] = [
     // já visto
     { id: 1, name: "Aluguel do apartamento" },
-    { id: 2, name: "Conta de luz"" },
+    { id: 2, name: "Conta de luz" },
     { id: 3, name: "Conta de água" },
   ];
+  
   private supermarkets: Supermarket[] = [
     // já visto
     { id: 1, name: "Villareal" },
@@ -841,5 +842,5 @@ class MemoryStorage implements IStorage {
 }
 
 // Use memory storage for now while database connection is being resolved
-export const storage = new MemoryStorage();
-// export const storage = new DatabaseStorage();
+// export const storage = new MemoryStorage();
+export const storage = new DatabaseStorage();

@@ -158,7 +158,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/fixed-expense-types", async (req, res) => { 
     try {
       const fixedTypeData = insertFixedExpenseTypeSchema.parse(req.body);
-      const newFixedType = await storage.createFixedExpenseType(fixedTypeData);
+      const newFixedType = await storage.addFixedExpenseType(fixedTypeData);
       res.status(201).json(newFixedType);
     } catch (error) {
       if (error instanceof z.ZodError) {

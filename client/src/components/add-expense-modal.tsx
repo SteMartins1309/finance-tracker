@@ -65,9 +65,9 @@ const expenseSchema = z.object({
   expenseType: z.enum(["routine", "occasional"]),
   routineCategory: z
     .enum([
-      "fixed"
-      "supermarket",
-      "food",
+      "fixed",  // já visto
+      "supermarket",  // já visto
+      "food",  // já visto
       "services",
       "leisure",
       "personal-care",
@@ -81,9 +81,9 @@ const expenseSchema = z.object({
   occasionalGroupId: z.string().optional(),
 
   // Category-specific fields
-  fixedExpenseTypeId: z.string().optional()
-  supermarketId: z.string().optional(), 
-  restaurantId: z.string().optional(),
+  fixedExpenseTypeId: z.string().optional(),  // já visto
+  supermarketId: z.string().optional(),  // já visto
+  restaurantId: z.string().optional(),  // já visto
   serviceTypeId: z.string().optional(),
   leisureTypeId: z.string().optional(),
   personalCareTypeId: z.string().optional(),
@@ -103,7 +103,7 @@ const expenseSchema = z.object({
 
   //--------------------------------------------------------------------------
   // Campos para a subcategoria 'fixed'
-  frequency: z.enum(["weekly", "monthly", "annually"]).optional(),
+  frequency: z.enum(["weekly", "monthly", "semi-annually", "annually"]).optional(),
   
   // Campos para a subcategoria 'food'
   foodPurchaseType: z.enum(["in-person", "online"]).optional(), 
@@ -214,7 +214,8 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
   // Cada hook gerencia o estado de um modal específico para adicionar novos itens (ex: mercados, restaurantes, etc.)
 
   // Hooks para lidar com a adição de novos tipos de despesas fixas
-  const [showAddFixedExpenseTypeModal, setShowAddFixedExpenseTypeModal] = useState(false);
+  const [addFixedExpenseTypeModalOpen, setAddFixedExpenseTypeModalOpen] = useState(false);
+  // const [showAddFixedExpenseTypeModal, setShowAddFixedExpenseTypeModal] = useState(false);
   
   // Hooks para lidar com a adição de novos supermercados
   const [showAddSupermarketModal, setShowAddSupermarketModal] = useState(false); 
@@ -276,7 +277,7 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
       
       // Category-specific fields
       //----------------------------------------------------------------------------
-      fixedExpenseTypes: data.fixedExpenseTypeId ? parseInt(data.fixedExpenseTypeId) : null
+      fixedExpenseTypes: data.fixedExpenseTypeId ? parseInt(data.fixedExpenseTypeId) : null,
       supermarketId: data.supermarketId ? parseInt(data.supermarketId) : null,
       restaurantId: data.restaurantId ? parseInt(data.restaurantId) : null,
       //----------------------------------------------------------------------------
@@ -559,6 +560,7 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
                             <SelectContent>
                               <SelectItem value="semanalmente">Weekly</SelectItem>
                               <SelectItem value="mensalmente">Monthly</SelectItem>
+                              <SelectItem value="semestralmente">Semi-annually</SelectItem>
                               <SelectItem value="anualmente">Annually</SelectItem>
                             </SelectContent>
                           </Select>

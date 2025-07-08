@@ -34,9 +34,9 @@ export const expenseTypeEnum = pgEnum("expense_type", [
 ]);
 // routineCategoryEnum: categoria de despesa rotineira
 export const routineCategoryEnum = pgEnum("routine_category", [
-  "fixed"
-  "supermarket",
-  "food",
+  "fixed",  // já visto
+  "supermarket",  // já visto
+  "food",  // já visto
   "services",
   "leisure",
   "personal-care",
@@ -62,6 +62,9 @@ export const occasionalGroupStatusEnum = pgEnum("occasional_group_status", [
 ]);
 
 //-------------------------------------------------------------------------
+// (PRONTO) Utilizada na subcategoria 'fixed'
+export const frequencyTypeEnum = pgEnum("frequency_type", ["weekly", "monthly", "semi-annually", "annually"]);
+
 // (PRONTO) Utilizada na subcategoria 'food'
 export const occasionTypeEnum = pgEnum("occasion_type", ["normal", "special"]);
 
@@ -71,8 +74,7 @@ export const purchaseTypeEnum = pgEnum("purchase_type", [
   "online",
 ]);
 
-// (PRONTO) Utilizada na subcategoria 'fixed'
-export const frequencyTypeEnum = pgEnum("frequency_type", ["weekly", "monthly", "annually"]);
+
 //-------------------------------------------------------------------------
 
 
@@ -96,6 +98,12 @@ export const occasionalGroups = pgTable("occasional_groups", {
 });
 
 //--------------------------------------------------------------------------
+// (PRONTO) fixedExpenseTypes: tabela de tipos de despesas fixas
+export const fixedExpenseTypes = pgTable("fixed_expense_types", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+});
+
 // (PRONTO) supermarkets: tabela de supermercados
 export const supermarkets = pgTable("supermarkets", {
   id: serial("id").primaryKey(),
@@ -108,11 +116,7 @@ export const restaurants = pgTable("restaurants", {
   name: text("name").notNull().unique(),
 });
 
-// (PRONTO) fixedExpenseTypes: tabela de tipos de despesas fixas
-export const fixedExpenseTypes = pgTable("fixed_expense_types", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull().unique(),
-});
+
 //--------------------------------------------------------------------------
 
 // serviceTypes: tabela de tipos de serviços
@@ -195,23 +199,27 @@ export const expensesRelations = relations(expenses, ({ one }) => ({
     fields: [expenses.occasionalGroupId],
     references: [occasionalGroups.id],
   }),
+  
   //--------------------------------------------------------------------------
+  // Define que cada despesa pode estar associada a um tipo de despesa fixa específico
   fixedExpenseType: one(fixedExpenseTypes, {
-    // Define que cada despesa pode estar associada a um tipo de despesa fixa específico
     fields: [expenses.fixedExpenseTypeId],
     references: [fixedExpenseTypes.id],
-  })
+  }),
+    
+  // Define que cada despesa pode estar associada a um supermercado específico
   supermarket: one(supermarkets, {
-    // Define que cada despesa pode estar associada a um supermercado específico
     fields: [expenses.supermarketId],
     references: [supermarkets.id],
   }),
+  
+  // Define que cada despesa pode estar associada a um restaurante específico
   restaurant: one(restaurants, {
-    // Define que cada despesa pode estar associada a um restaurante específico
     fields: [expenses.restaurantId],
     references: [restaurants.id],
   }),
   //--------------------------------------------------------------------------
+  
   serviceType: one(serviceTypes, {
     fields: [expenses.serviceTypeId],
     references: [serviceTypes.id],
