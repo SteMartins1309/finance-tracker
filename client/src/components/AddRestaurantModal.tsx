@@ -1,4 +1,4 @@
-// FUNÇÃO NA OPERAÇÃO: Adiciona um novo restaurante à lista de restaurantes
+// IMPORTS
 
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -23,28 +23,35 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
-// Esquema de validação com Zod
+
+// SCHEMA: Define o esquema de validação para o formulário de adição de restaurante
 const schema = z.object({
   name: z.string().min(2, "Nome do restaurante é requerido"),
 });
 
+// FORM DATA: Define o tipo de dados para o formulário de adição de restaurante
 type FormData = z.infer<typeof schema>;
 
+// PROPS: Define as propriedades do componente AddRestaurantModal
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-// COMPONENTE: O componente AddRestaurantModal é responsável por renderizar o formulário modal e gerenciar o estado do formulário e as chamadas de API. Recebe dois props: open: controla se o modal está aberto. onOpenChange: função para abrir/fechar o modal.
+// ADD RESTAURANT MODAL: Componente para adicionar um novo restaurante
 export function AddRestaurantModal({ open, onOpenChange }: Props) {
+
+  // Inicializa o formulário de adição de restaurante
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { name: "" },
   });
 
+  // Inicializa os hooks de query e toast
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  // Inicializa a mutação para adicionar um novo restaurante
   const mutation = useMutation({
     mutationFn: (data: FormData) =>
       apiRequest("POST", "/api/restaurants", data),
@@ -64,6 +71,7 @@ export function AddRestaurantModal({ open, onOpenChange }: Props) {
     },
   });
 
+  // Renderiza o componente AddRestaurantModal
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -88,7 +96,7 @@ export function AddRestaurantModal({ open, onOpenChange }: Props) {
                   <FormLabel>Nome do Restaurante</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="ex: Spoleto, Mc Donald's..."
+                      placeholder="ex: Spoleto, McDonald's..."
                       autoFocus
                       {...field}
                     />
@@ -100,7 +108,7 @@ export function AddRestaurantModal({ open, onOpenChange }: Props) {
 
             <div className="flex justify-end">
               <Button type="submit" disabled={mutation.isPending}>
-                {mutation.isPending ? "Salvando..." : "Salvo"}
+                {mutation.isPending ? "Salvando..." : "Salvar"}
               </Button>
             </div>
           </form>

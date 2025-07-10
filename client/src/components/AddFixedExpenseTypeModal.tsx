@@ -1,3 +1,5 @@
+// IMPORTS
+
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -21,50 +23,60 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
-// Esquema de validação com Zod
+
+// SCHEMA: Esquema de validação para o formulário de adição de tipo de despesa fixa
 const schema = z.object({
-  name: z.string().min(2, "Fixed expense type name is required"),
+  name: z.string().min(2, "Nome do tipo de gasto fixo é requerido"),
 });
 
+// FORM DATA: Tipo de dados para o formulário de adição de tipo de despesa fixa
 type FormData = z.infer<typeof schema>;
 
+// PROPS: Propriedades do componente AddFixedExpenseTypeModal
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function AddFixedExpenseTypeModal({ open, onOpenChange }: Props) { // <--- NOVO COMPONENTE
+// ADD FIXED EXPENSE TYPE MODAL: Componente de modal para adição de tipo de despesa fixa
+export function AddFixedExpenseTypeModal({ open, onOpenChange }: Props) {
+
+  // Formulário de adição de tipo de despesa fixa
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { name: "" },
   });
 
+  // Inicializa os hooks de query e toast
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  // Mutation para adicionar um novo tipo de despesa fixa
   const mutation = useMutation({
-    mutationFn: (data: FormData) => apiRequest("POST", "/api/fixed-expense-types", data), // <--- Rota POST para tipos fixos
+    mutationFn: (data: FormData) =>
+      apiRequest("POST", "/api/fixed-expense-types", data),
     onSuccess: () => {
-      toast({ title: "Success", description: "Fixed expense type added!" });
-      queryClient.invalidateQueries({ queryKey: ["/api/fixed-expense-types"] }); // <--- Invalida query
+      toast({ title: "Successo", description: "Tipo de gasto fixo adicionado!" });
+      queryClient.invalidateQueries({ queryKey: ["/api/fixed-expense-types"] }); 
       onOpenChange(false);
       form.reset();
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
+        title: "Erro",
         description:
-          error?.response?.data?.message || "Could not add fixed expense type",
+          error?.response?.data?.message || "Não foi possível adicionar o tipo de gasto fixo",
         variant: "destructive",
       });
     },
   });
 
+  // Renderiza o componente de modal
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add Fixed Expense Type</DialogTitle>
+          <DialogTitle>Adicionar tipo de despesa fixa</DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
@@ -77,10 +89,10 @@ export function AddFixedExpenseTypeModal({ open, onOpenChange }: Props) { // <--
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Type Name</FormLabel>
+                  <FormLabel>Nome do tipo</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="e.g. Rent, Subscription, Mortgage..."
+                      placeholder="ex: aluguel, contas de casa, ..."
                       autoFocus
                       {...field}
                     />
@@ -92,7 +104,7 @@ export function AddFixedExpenseTypeModal({ open, onOpenChange }: Props) { // <--
 
             <div className="flex justify-end">
               <Button type="submit" disabled={mutation.isPending}>
-                {mutation.isPending ? "Saving..." : "Save"}
+                {mutation.isPending ? "Salvando..." : "Salvar"}
               </Button>
             </div>
           </form>

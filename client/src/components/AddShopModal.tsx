@@ -24,24 +24,24 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 
-// SCHEMA: Define o esquema de validação para o formulário de adição de supermercado
+// SCHEMA: Define o esquema de validação para o formulário
 const schema = z.object({
-  name: z.string().min(2, "Nome do supermercado é requerido"),
+  name: z.string().min(2, "Shop name is required"),
 });
 
-// FORM DATA: Define o tipo de dados para o formulário de adição de supermercado
+// FORM DATA: Define o tipo de dados para o formulário
 type FormData = z.infer<typeof schema>;
 
-// PROPS: Define as propriedades para o componente de modal de adição de supermercado
+// PROPS: Define as propriedades do componente
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-// ADD SUPERMARKET MODAL: Componente de modal para adicionar um novo supermercado
-export function AddSupermarketModal({ open, onOpenChange }: Props) {
+// ADD SHOP MODAL: Componente de modal para adicionar uma nova loja
+export function AddShopModal({ open, onOpenChange }: Props) {
 
-  // Cria o formulário de adição de supermercado
+  // Cria o formulário usando o hook useForm
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { name: "" },
@@ -51,13 +51,12 @@ export function AddSupermarketModal({ open, onOpenChange }: Props) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // Cria a mutação para adicionar um novo supermercado
+  // Cria a mutação para adicionar uma nova loja
   const mutation = useMutation({
-    mutationFn: (data: FormData) =>
-      apiRequest("POST", "/api/supermarkets", data),
-    onSuccess: (newSupermarket) => {
-      toast({ title: "Successo", description: "Supermercado adicionado!" });
-      queryClient.invalidateQueries({ queryKey: ["/api/supermarkets"] });
+    mutationFn: (data: FormData) => apiRequest("POST", "/api/shops", data),
+    onSuccess: () => {
+      toast({ title: "Successo", description: "Loja adicionada!" });
+      queryClient.invalidateQueries({ queryKey: ["/api/shops"] });
       onOpenChange(false);
       form.reset();
     },
@@ -65,8 +64,7 @@ export function AddSupermarketModal({ open, onOpenChange }: Props) {
       toast({
         title: "Erro",
         description:
-          error?.response?.data?.message ||
-          "Não foi possível adicionar supermercado",
+          error?.response?.data?.message || "Não foi possível adicionar loja",
         variant: "destructive",
       });
     },
@@ -77,16 +75,12 @@ export function AddSupermarketModal({ open, onOpenChange }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Adicionar Supermercado</DialogTitle>
+          <DialogTitle>Adicionar loja</DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
           <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              form.handleSubmit((data) => mutation.mutate(data))(e);
-            }}
+            onSubmit={form.handleSubmit((data) => mutation.mutate(data))}
             className="space-y-4"
           >
             <FormField
@@ -94,10 +88,10 @@ export function AddSupermarketModal({ open, onOpenChange }: Props) {
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nome do Supermercado</FormLabel>
+                  <FormLabel>Nome da loja</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="ex: Roldão, Carrefour, ..."
+                      placeholder="ex: Amazon, Magazine Luiza, ..."
                       autoFocus
                       {...field}
                     />

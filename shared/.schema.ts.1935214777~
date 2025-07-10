@@ -16,8 +16,8 @@ import { relations } from "drizzle-orm";
 
 
 // ENUMS
-//-----------------------------------------------------------------------------------------
 
+//--------------------------------------------------------------------------------
 // Para TODAS as despesas, rotineiras e ocasionais
 
 // paymentMethodEnum: método de pagamento
@@ -49,6 +49,7 @@ export const routineCategoryEnum = pgEnum("routine_category", [
   "family",  
   "charity",  
 ]);
+//--------------------------------------------------------------------------------
 
 // occasionalGroupStatusEnum: status do grupo de despesas ocasionais  (categoria 'occasional')
 export const occasionalGroupStatusEnum = pgEnum("occasional_group_status", [
@@ -85,12 +86,9 @@ export const transportModeEnum = pgEnum("transport_mode", [
   "bicycle",
 ]);
 
-//-----------------------------------------------------------------------------------------
-// fim dos ENUMS
 
 
 // TABELAS
-//-----------------------------------------------------------------------------------------
 
 // users: tabela de usuários
 export const users = pgTable("users", {
@@ -104,8 +102,6 @@ export const occasionalGroups = pgTable("occasional_groups", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   status: occasionalGroupStatusEnum("status").notNull().default("open"),
-  description: text("description"),
-  iconName: text("icon_name"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -174,11 +170,10 @@ export const charityTypes = pgTable("charity_types", {
   id: serial("id").primaryKey(),
   name: text("name").notNull().unique(),
 });
-//-----------------------------------------------------------------------------------------
+
 
 
 // EXPENSES: tabela de despesas
-//-----------------------------------------------------------------------------------------
 
 export const expenses = pgTable("expenses", {
 
@@ -193,7 +188,6 @@ export const expenses = pgTable("expenses", {
   expenseType: expenseTypeEnum("expense_type").notNull(),  // Tipo de despesa (rotina ou ocasional)
   routineCategory: routineCategoryEnum("routine_category"),  // Categoria de despesa rotineira (se for rotina)
   occasionalGroupId: integer("occasional_group_id"),  // ID do grupo de despesas ocasionais (se for ocasional)
-  createdAt: timestamp("created_at").defaultNow().notNull(),  // Data de criação da despesa
 
   
   // Para as subcategorias de despesas rotineiras
@@ -210,63 +204,73 @@ export const expenses = pgTable("expenses", {
   occasionType: occasionTypeEnum("occasion_type").default("normal"),  // Tipo de ocasião
   specialOccasionDescription: text("special_occasion_description"),  // Descrição da ocasião especial
   foodPurchaseType: purchaseTypeEnum("food_purchase_type"),  // Modo de compra
-  restaurantName: text("restaurant_name"),  // Nome da loja
+  restaurantName: text("store_name"),  // Nome da loja
 
   // Para a subcategoria 'services'
-  serviceTypeId: integer("service_type_id"),  // ID do tipo de serviço
-  serviceDescription: text("service_description"),  // Descrição do serviço
+  serviceTypeId: integer("service_type_id"),
+  serviceDescription: text("service_description"),
 
   // Para a subcategoria 'leisure'
-  leisureTypeId: integer("leisure_type_id"),  // ID do tipo de lazer
-  leisureDescription: text("leisure_description"),  // Descrição do lazer
+  leisureTypeId: integer("leisure_type_id"),
+  leisureDescription: text("leisure_description"),
 
   // Para a subcategoria 'personal-care'
-  personalCareTypeId: integer("personal_care_type_id"),  // ID do tipo de cuidado pessoal
-  personalCareDescription: text("personal_care_description"),  // Descrição do cuidado pessoal
+  personalCareTypeId: integer("personal_care_type_id"),
+  personalCareDescription: text("personal_care_description"),
 
   // Para a subcategoria 'shopping'
-  shopId: integer("shop_id"),  // ID da loja
-  shoppingPurchaseType: purchaseTypeEnum("shopping_purchase_type"),  // Modo de compra
-  shoppingOccasionType: occasionTypeEnum("shopping_occasion_type").default("normal"),   // Tipo de ocasião
-  shoppingSpecialOccasionDescription: text("shopping_special_occasion_description"),  // Descrição da ocasião especial
+  shopId: integer("shop_id"),
+  shoppingPurchaseType: purchaseTypeEnum("shopping_purchase_type"), 
+  shoppingOccasionType: occasionTypeEnum("shopping_occasion_type").default("normal"), 
+  shoppingSpecialOccasionDescription: text("shopping_special_occasion_description"),
 
   // Para a subcategoria 'transportation'
-  startPlaceId: integer("start_place_id"),  // ID do lugar de partida
-  endPlaceId: integer("end_place_id"),  // ID do lugar de destino
-  startingPoint: text("starting_point"),  // Ponto de partida
-  destination: text("destination"),  // Destino
-  transportMode: transportModeEnum("transport_mode"),  // Modo de transporte
-  transportDescription: text("transport_description"),  // Descrição do transporte
+  startPlaceId: integer("start_place_id"),
+  endPlaceId: integer("end_place_id"),
+  startingPoint: text("starting_point"),
+  destination: text("destination"), 
+  transportMode: transportModeEnum("transport_mode"),
+  transportDescription: text("transport_description"),
 
   // Para a subcategoria 'health'
-  healthTypeId: integer("health_type_id"),  // ID do tipo de demanda de saúde
-  healthDescription: text("health_description"),  // Descrição da demanda de saúde
+  healthTypeId: integer("health_type_id"),
+  healthDescription: text("health_description"),
 
   // Para a subcategoria 'family'
-  familyMemberId: integer("family_member_id"),  // ID do membro da família
-  familyDescription: text("family_description"),  // Descrição da despesa familiar
+  familyMemberId: integer("family_member_id"),
+  familyDescription: text("family_description"),
 
   // Para a subcategoria 'charity'
-  charityTypeId: integer("charity_type_id"),  // ID do tipo de caridade
-  charityDescription: text("charity_description"),  // Descrição da despesa de caridade
- 
+  charityTypeId: integer("charity_type_id"),
+  charityDescription: text("charity_description"),
+  //-------------------------------------------------------------------------
+
+
+  
+  
+  
+
+  // Text fields
+  description: text("description"),
+
+  purchaseType: purchaseTypeEnum("purchase_type"),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
-//-----------------------------------------------------------------------------------------
-// fim das TABELAS
+
 
 
 // RELAÇÕES
-//-----------------------------------------------------------------------------------------
 
-// Define que cada despesa pode estar associada a um grupo de despesas ocasionais específico
 export const expensesRelations = relations(expenses, ({ one }) => ({
   occasionalGroup: one(occasionalGroups, {
     fields: [expenses.occasionalGroupId],
     references: [occasionalGroups.id],
   }),
 
-  // RELAÇÕES para as subcategorias de despesas rotineiras
   
+  // RELAÇÕES
+  //--------------------------------------------------------------------------
   // Define que cada despesa pode estar associada a um tipo de despesa fixa específico
   fixedExpenseType: one(fixedExpenseTypes, {
     fields: [expenses.fixedExpenseTypeId],
@@ -338,12 +342,14 @@ export const expensesRelations = relations(expenses, ({ one }) => ({
     fields: [expenses.charityTypeId],
     references: [charityTypes.id],
   }),
+  //--------------------------------------------------------------------------
+  
+
+  
+ 
   
 }));
-//-----------------------------------------------------------------------------------------
 
-
-// Define que um grupo de despesas ocasionais pode ter várias despesas associadas
 export const occasionalGroupsRelations = relations(
   occasionalGroups,
   ({ many }) => ({
@@ -351,6 +357,7 @@ export const occasionalGroupsRelations = relations(
   }),
 );
 
+//--------------------------------------------------------------------------
 // Define que um tipo de despesa fixa pode ter várias despesas associadas
 export const fixedExpenseTypesRelations = relations(fixedExpenseTypes, ({ many }) => ({ 
   expenses: many(expenses),
@@ -407,20 +414,21 @@ export const familyMembersRelations = relations(familyMembers, ({ many }) => ({
 export const charityTypesRelations = relations(charityTypes, ({ many }) => ({
   expenses: many(expenses),
 }));
-
-//-----------------------------------------------------------------------------------------
-// fim das RELAÇÕES
+//--------------------------------------------------------------------------
 
 
-// ESQUEMAS DE INSERÇÃO
-//-----------------------------------------------------------------------------------------
 
-// Define esquema de inserção para a tabela de usuários
+
+
+
+// Insert Schemas (createInsertSchema): Utiliza o drizzle-zod para criar automaticamente esquemas de validação Zod para a inserção de dados em cada tabela.
+// O .omit({ id: true, createdAt: true }) é usado para indicar que os campos id e createdAt (que são gerados automaticamente pelo banco de dados)
+// não precisam ser fornecidos ao criar um novo registro.
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
 });
 
-// Define esquema de inserção para a tabela de grupos de despesas ocasionais
 export const insertOccasionalGroupSchema = createInsertSchema(
   occasionalGroups,
 ).omit({
@@ -428,7 +436,6 @@ export const insertOccasionalGroupSchema = createInsertSchema(
   createdAt: true,
 });
 
-// Define esquema de inserção para a tabela de despesas
 export const insertExpenseSchema = createInsertSchema(expenses)
   .omit({
     id: true,
@@ -438,9 +445,7 @@ export const insertExpenseSchema = createInsertSchema(expenses)
     purchaseDate: z.string().transform((str) => new Date(str)),
   });
 
-
-// Para as subcategorias de despesas rotineiras
-
+//--------------------------------------------------------------------------
 // Define esquema de inserção para a tabela de tipos de despesas fixas
 export const insertFixedExpenseTypeSchema = createInsertSchema(fixedExpenseTypes).omit({ 
   id: true,
@@ -495,29 +500,22 @@ export const insertFamilyMemberSchema = createInsertSchema(familyMembers).omit({
 export const insertCharityTypeSchema = createInsertSchema(charityTypes).omit({
   id: true,
 });
-
-//-----------------------------------------------------------------------------------------
-// fim dos ESQUEMAS DE INSERÇÃO
+//--------------------------------------------------------------------------
 
 
-// TIPOS TYPESCRIPT: Para validação de inserção e leitura da tabela
-//-----------------------------------------------------------------------------------------
 
-// Define o tipo TypeScript para a inserção e leitura de usuários
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = typeof users.$inferSelect; 
+// TIPOS (export type): Exporta tipos TypeScript (InsertUser, User, InsertExpense, Expense, etc.) que são inferidos a partir dos esquemas Drizzle e Zod.
+// Isso fornece forte tipagem em todo o seu aplicativo, ajudando a prevenir erros e melhorando a autocompletar no seu editor de código.
+export type InsertUser = z.infer<typeof insertUserSchema>; // Para validação de inserção
+export type User = typeof users.$inferSelect; // Para leitura da tabela
 
-// Define o tipo TypeScript para a inserção e leitura de grupos de despesas ocasionais
 export type InsertOccasionalGroup = z.infer<typeof insertOccasionalGroupSchema>;
 export type OccasionalGroup = typeof occasionalGroups.$inferSelect;
 
-// Define o tipo TypeScript para a inserção e leitura de despesas
 export type InsertExpense = z.infer<typeof insertExpenseSchema>;
 export type Expense = typeof expenses.$inferSelect;
 
-
-// Para as subcategorias de despesas rotineiras
-
+//--------------------------------------------------------------------------
 // Define o tipo TypeScript para a inserção e leitura de tipos de despesas fixas
 export type InsertFixedExpenseType = z.infer<typeof insertFixedExpenseTypeSchema>; 
 export type FixedExpenseType = typeof fixedExpenseTypes.$inferSelect;
@@ -561,5 +559,4 @@ export type FamilyMember = typeof familyMembers.$inferSelect;
 // Define o tipo TypeScript para a inserção e leitura de tipos de caridade
 export type InsertCharityType = z.infer<typeof insertCharityTypeSchema>;
 export type CharityType = typeof charityTypes.$inferSelect;
-//-----------------------------------------------------------------------------------------
-// fim dos TIPOS TYPESCRIPT
+//--------------------------------------------------------------------------

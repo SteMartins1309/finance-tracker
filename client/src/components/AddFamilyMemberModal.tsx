@@ -24,40 +24,39 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 
-// SCHEMA: Define o esquema de validação para o formulário de adição de supermercado
+// SCHEMA: Define o esquema de validação para o formulário
 const schema = z.object({
-  name: z.string().min(2, "Nome do supermercado é requerido"),
+  name: z.string().min(2, "Family member name is required"),
 });
 
-// FORM DATA: Define o tipo de dados para o formulário de adição de supermercado
+// FORM DATA: Define o tipo de dados para o formulário
 type FormData = z.infer<typeof schema>;
 
-// PROPS: Define as propriedades para o componente de modal de adição de supermercado
+// PROPS: Define as propriedades do componente
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-// ADD SUPERMARKET MODAL: Componente de modal para adicionar um novo supermercado
-export function AddSupermarketModal({ open, onOpenChange }: Props) {
+// ADD FAMILY MEMBER MODAL: Componente para adicionar um novo membro da família
+export function AddFamilyMemberModal({ open, onOpenChange }: Props) {
 
-  // Cria o formulário de adição de supermercado
+  // Cria o formulário com o esquema de validação e valores padrão
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { name: "" },
   });
 
-  // Inicializa os hooks de query e toast
+  // Query client e toast para notificações
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // Cria a mutação para adicionar um novo supermercado
+  // Mutation para adicionar um novo membro da família
   const mutation = useMutation({
-    mutationFn: (data: FormData) =>
-      apiRequest("POST", "/api/supermarkets", data),
-    onSuccess: (newSupermarket) => {
-      toast({ title: "Successo", description: "Supermercado adicionado!" });
-      queryClient.invalidateQueries({ queryKey: ["/api/supermarkets"] });
+    mutationFn: (data: FormData) => apiRequest("POST", "/api/family-members", data),
+    onSuccess: () => {
+      toast({ title: "Successo", description: "Membro da família adicionado!" });
+      queryClient.invalidateQueries({ queryKey: ["/api/family-members"] });
       onOpenChange(false);
       form.reset();
     },
@@ -65,28 +64,23 @@ export function AddSupermarketModal({ open, onOpenChange }: Props) {
       toast({
         title: "Erro",
         description:
-          error?.response?.data?.message ||
-          "Não foi possível adicionar supermercado",
+          error?.response?.data?.message || "Não foi possível adicionar membro da família",
         variant: "destructive",
       });
     },
   });
 
-  // Renderiza o componente de modal
+  // Renderiza o componente
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Adicionar Supermercado</DialogTitle>
+          <DialogTitle>Adicionar membro da família</DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
           <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              form.handleSubmit((data) => mutation.mutate(data))(e);
-            }}
+            onSubmit={form.handleSubmit((data) => mutation.mutate(data))}
             className="space-y-4"
           >
             <FormField
@@ -94,10 +88,10 @@ export function AddSupermarketModal({ open, onOpenChange }: Props) {
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nome do Supermercado</FormLabel>
+                  <FormLabel>Nome do membro</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="ex: Roldão, Carrefour, ..."
+                      placeholder="ex: Mamãe, Vovó, Titio, ..."
                       autoFocus
                       {...field}
                     />

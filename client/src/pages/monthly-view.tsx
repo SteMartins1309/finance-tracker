@@ -1,3 +1,5 @@
+// IMPORTS
+
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,37 +21,88 @@ import {
   Gamepad2,
   Scissors,
   Users,
-  Gift
+  Gift,
+  DollarSign
 } from "lucide-react";
+import { format } from "date-fns"; 
+import { formatCurrency } from "@/lib/utils";
 
+
+// MONTHLY VIEW: Componente para visualização mensal das despesas
 export default function MonthlyView() {
+  
   const currentDate = new Date();
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1);
 
-  const { data: monthlyExpenses, isLoading } = useQuery({
+  // Usaremos getExpensesByMonth para obter a lista detalhada, e categoryBreakdown para os totais por categoria
+  const { data: monthlyExpensesList, isLoading: listLoading } = useQuery({ // Renomeado para monthlyExpensesList
     queryKey: ["/api/expenses/monthly", selectedYear, selectedMonth],
   });
 
-  const { data: categoryBreakdown } = useQuery({
+  const { data: categoryBreakdown, isLoading: breakdownLoading } = useQuery({
     queryKey: ["/api/stats/category-breakdown", selectedYear, selectedMonth],
-    queryParams: { month: selectedMonth }
+    // queryParams: { month: selectedMonth } // Isso não é mais necessário com a nova estrutura de queryKey do React Query 5
   });
 
-  const getCategoryIcon = (category: string) => {
-    const iconMap: { [key: string]: JSX.Element } = {
-      supermarket: <ShoppingCart className="h-5 w-5 text-primary" />,
-      food: <Utensils className="h-5 w-5 text-secondary" />,
-      transportation: <Car className="h-5 w-5 text-accent" />,
-      health: <Heart className="h-5 w-5 text-red-500" />,
-      services: <Home className="h-5 w-5 text-blue-500" />,
-      leisure: <Gamepad2 className="h-5 w-5 text-purple-500" />,
-      "personal-care": <Scissors className="h-5 w-5 text-pink-500" />,
-      shopping: <Tags className="h-5 w-5 text-indigo-500" />,
-      family: <Users className="h-5 w-5 text-green-500" />,
-      charity: <Gift className="h-5 w-5 text-yellow-500" />,
-    };
-    return iconMap[category] || <Tags className="h-5 w-5 text-gray-500" />;
+  // GET CATEGORY ICON: Função para obter o ícone da categoria
+  const getCategoryIcon = (routineCategory: string) => { // Renomeado o parâmetro para 'routineCategory' para clareza
+    switch (routineCategory) {
+      case "fixed":
+        return <DollarSign className="h-5 w-5 text-green-600" />; // Ex: Verde para fixos
+      case "supermarket":
+        return <ShoppingCart className="h-5 w-5 text-primary" />;
+      case "food":
+        return <Utensils className="h-5 w-5 text-secondary" />;
+      case "transportation":
+        return <Car className="h-5 w-5 text-accent" />;
+      case "services":
+        return <Home className="h-5 w-5 text-blue-500" />;
+      case "leisure":
+        return <Gamepad2 className="h-5 w-5 text-purple-500" />;
+      case "personal-care":
+        return <Scissors className="h-5 w-5 text-pink-500" />;
+      case "shopping":
+        return <Tags className="h-5 w-5 text-indigo-500" />;
+      case "health":
+        return <Heart className="h-5 w-5 text-red-500" />;
+      case "family":
+        return <Users className="h-5 w-5 text-cyan-500" />;
+      case "charity":
+        return <Gift className="h-5 w-5 text-yellow-500" />;
+      default:
+        return <Tags className="h-5 w-5 text-gray-500" />; // Para "occasional" ou outros
+    }
+  };
+
+  // Helper function to get a color for the category icon background
+  const getCategoryIconColor = (category: string) => {
+    switch (category) {
+      case "fixed":
+        return "#FFE5A0"; // Cor de fundo que você usou no dashboard
+      case "supermarket":
+        return "#FFE0DB";
+      case "food":
+        return "#FFD7BB";
+      case "transportation":
+        return "#E8EAED";
+      case "services":
+        return "#E4E4E4";
+      case "leisure":
+        return "#D4EDBC";
+      case "personal-care":
+        return "#F3D7E1";
+      case "shopping":
+        return "#C6DBE1";
+      case "health":
+        return "#C9E7F8";
+      case "family":
+        return "#E6CFF2";
+      case "charity":
+        return "#E8C5D8";
+      default:
+        return "hsl(var(--muted))";
+    }
   };
 
   const formatCurrency = (amount: number) => {
@@ -60,17 +113,29 @@ export default function MonthlyView() {
   };
 
   const groupExpensesByCategory = (expenses: any[]) => {
-    const grouped: { [key: string]: { total: number; items: any[] } } = {};
-    
+    const grouped: {
+      routine: { [key: string]: { total: number; items: any[] } };
+      occasional: { total: number; items: any[] };
+    } = {
+      routine: {},
+      occasional: { total: 0, items: [] },
+    };
+
     expenses?.forEach(expense => {
-      const category = expense.routineCategory || 'occasional';
-      if (!grouped[category]) {
-        grouped[category] = { total: 0, items: [] };
+      const amount = parseFloat(expense.amount);
+      if (expense.expenseType === 'routine') {
+        const routineCat = expense.routineCategory; // 'fixed', 'supermarket', etc.
+        if (!grouped.routine[routineCat]) {
+          grouped.routine[routineCat] = { total: 0, items: [] };
+        }
+        grouped.routine[routineCat].total += amount;
+        grouped.routine[routineCat].items.push(expense);
+      } else { // 'occasional'
+        grouped.occasional.total += amount;
+        grouped.occasional.items.push(expense);
       }
-      grouped[category].total += parseFloat(expense.amount);
-      grouped[category].items.push(expense);
     });
-    
+
     return grouped;
   };
 

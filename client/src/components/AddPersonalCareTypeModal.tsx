@@ -24,24 +24,22 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 
-// SCHEMA: Define o esquema de validação para o formulário de adição de supermercado
+// SCHEMA: Esquema de validação para o formulário de adição de tipo de cuidado pessoal
 const schema = z.object({
-  name: z.string().min(2, "Nome do supermercado é requerido"),
+  name: z.string().min(2, "Personal care type name is required"),
 });
 
-// FORM DATA: Define o tipo de dados para o formulário de adição de supermercado
+// FORM DATA: Tipo de dados para o formulário de adição de tipo de cuidado pessoal
 type FormData = z.infer<typeof schema>;
 
-// PROPS: Define as propriedades para o componente de modal de adição de supermercado
+// PROPS: Propriedades do componente AddPersonalCareTypeModal
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-// ADD SUPERMARKET MODAL: Componente de modal para adicionar um novo supermercado
-export function AddSupermarketModal({ open, onOpenChange }: Props) {
-
-  // Cria o formulário de adição de supermercado
+// ADD PERSONAL CARE TYPE MODAL: Componente de modal para adicionar um novo tipo de cuidado pessoal
+export function AddPersonalCareTypeModal({ open, onOpenChange }: Props) {
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { name: "" },
@@ -51,13 +49,12 @@ export function AddSupermarketModal({ open, onOpenChange }: Props) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // Cria a mutação para adicionar um novo supermercado
+  // Mutation para adicionar um novo tipo de cuidado pessoal
   const mutation = useMutation({
-    mutationFn: (data: FormData) =>
-      apiRequest("POST", "/api/supermarkets", data),
-    onSuccess: (newSupermarket) => {
-      toast({ title: "Successo", description: "Supermercado adicionado!" });
-      queryClient.invalidateQueries({ queryKey: ["/api/supermarkets"] });
+    mutationFn: (data: FormData) => apiRequest("POST", "/api/personal-care-types", data),
+    onSuccess: () => {
+      toast({ title: "Successo", description: "Tipo de cuidado pessoal adicionado!" });
+      queryClient.invalidateQueries({ queryKey: ["/api/personal-care-types"] });
       onOpenChange(false);
       form.reset();
     },
@@ -65,8 +62,7 @@ export function AddSupermarketModal({ open, onOpenChange }: Props) {
       toast({
         title: "Erro",
         description:
-          error?.response?.data?.message ||
-          "Não foi possível adicionar supermercado",
+          error?.response?.data?.message || "Não foi possível adicionar tipo de cuidado pessoal",
         variant: "destructive",
       });
     },
@@ -77,16 +73,12 @@ export function AddSupermarketModal({ open, onOpenChange }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Adicionar Supermercado</DialogTitle>
+          <DialogTitle>Adicionar tipo de cuidado pessoal</DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
           <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              form.handleSubmit((data) => mutation.mutate(data))(e);
-            }}
+            onSubmit={form.handleSubmit((data) => mutation.mutate(data))}
             className="space-y-4"
           >
             <FormField
@@ -94,10 +86,10 @@ export function AddSupermarketModal({ open, onOpenChange }: Props) {
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nome do Supermercado</FormLabel>
+                  <FormLabel>Nome do tipo</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="ex: Roldão, Carrefour, ..."
+                      placeholder="ex: corte de cabelo, maquiagem, ..."
                       autoFocus
                       {...field}
                     />

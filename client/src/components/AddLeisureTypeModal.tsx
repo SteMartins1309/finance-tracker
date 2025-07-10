@@ -24,24 +24,22 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 
-// SCHEMA: Define o esquema de validação para o formulário de adição de supermercado
+// SCHEMA: Define o esquema de validação para o formulário de adição de tipo de lazer
 const schema = z.object({
-  name: z.string().min(2, "Nome do supermercado é requerido"),
+  name: z.string().min(2, "Leisure type name is required"),
 });
 
-// FORM DATA: Define o tipo de dados para o formulário de adição de supermercado
+// FORM DATA: Define o tipo de dados para o formulário de adição de tipo de lazer
 type FormData = z.infer<typeof schema>;
 
-// PROPS: Define as propriedades para o componente de modal de adição de supermercado
+// PROPS: Define as propriedades para o componente AddLeisureTypeModal
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-// ADD SUPERMARKET MODAL: Componente de modal para adicionar um novo supermercado
-export function AddSupermarketModal({ open, onOpenChange }: Props) {
-
-  // Cria o formulário de adição de supermercado
+// ADD LEISURE TYPE MODAL: Componente para adicionar um novo tipo de lazer
+export function AddLeisureTypeModal({ open, onOpenChange }: Props) {
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { name: "" },
@@ -51,13 +49,12 @@ export function AddSupermarketModal({ open, onOpenChange }: Props) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // Cria a mutação para adicionar um novo supermercado
+  // Mutation para adicionar um novo tipo de lazer
   const mutation = useMutation({
-    mutationFn: (data: FormData) =>
-      apiRequest("POST", "/api/supermarkets", data),
-    onSuccess: (newSupermarket) => {
-      toast({ title: "Successo", description: "Supermercado adicionado!" });
-      queryClient.invalidateQueries({ queryKey: ["/api/supermarkets"] });
+    mutationFn: (data: FormData) => apiRequest("POST", "/api/leisure-types", data),
+    onSuccess: () => {
+      toast({ title: "SuccessO", description: "Tipo de lazer adicionado!" });
+      queryClient.invalidateQueries({ queryKey: ["/api/leisure-types"] });
       onOpenChange(false);
       form.reset();
     },
@@ -65,28 +62,23 @@ export function AddSupermarketModal({ open, onOpenChange }: Props) {
       toast({
         title: "Erro",
         description:
-          error?.response?.data?.message ||
-          "Não foi possível adicionar supermercado",
+          error?.response?.data?.message || "Não foi possível adicionar tipo de lazer",
         variant: "destructive",
       });
     },
   });
 
-  // Renderiza o componente de modal
+  // Renderiza o componente
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Adicionar Supermercado</DialogTitle>
+          <DialogTitle>Adicionar tipo de lazer</DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
           <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              form.handleSubmit((data) => mutation.mutate(data))(e);
-            }}
+            onSubmit={form.handleSubmit((data) => mutation.mutate(data))}
             className="space-y-4"
           >
             <FormField
@@ -94,10 +86,10 @@ export function AddSupermarketModal({ open, onOpenChange }: Props) {
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nome do Supermercado</FormLabel>
+                  <FormLabel>Nome do tipo</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="ex: Roldão, Carrefour, ..."
+                      placeholder="ex: cinema, rolê, ..."
                       autoFocus
                       {...field}
                     />
