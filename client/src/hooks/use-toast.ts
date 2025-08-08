@@ -3,10 +3,12 @@ import * as React from "react"
 import type {
   ToastActionElement,
   ToastProps,
-} from "@/components/ui/toast"
+} from "@/components/ui/toast" // Certifique-se de que este caminho está correto
 
-const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 1000000
+// Ajustado: Tempo para remover o toast, 5 segundos é um bom padrão
+const TOAST_REMOVE_DELAY = 5000 // <<<< CORRIGIDO: Reduzido o tempo de exibição do toast
+
+const TOAST_LIMIT = 1 // Limite de toasts exibidos simultaneamente
 
 type ToasterToast = ToastProps & {
   id: string
@@ -55,6 +57,8 @@ interface State {
 
 const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
 
+// Note: `dispatch` é uma função global (ou quase).
+// A função `addToRemoveQueue` precisa dela no escopo.
 const addToRemoveQueue = (toastId: string) => {
   if (toastTimeouts.has(toastId)) {
     return
@@ -62,6 +66,8 @@ const addToRemoveQueue = (toastId: string) => {
 
   const timeout = setTimeout(() => {
     toastTimeouts.delete(toastId)
+    // O dispatch aqui se refere à função `dispatch` declarada abaixo,
+    // que é alcançável por closure ou por ser de alto nível.
     dispatch({
       type: "REMOVE_TOAST",
       toastId: toastId,
@@ -76,6 +82,7 @@ export const reducer = (state: State, action: Action): State => {
     case "ADD_TOAST":
       return {
         ...state,
+        // Limita o número de toasts exibidos
         toasts: [action.toast, ...state.toasts].slice(0, TOAST_LIMIT),
       }
 
@@ -90,11 +97,11 @@ export const reducer = (state: State, action: Action): State => {
     case "DISMISS_TOAST": {
       const { toastId } = action
 
-      // ! Side effects ! - This could be extracted into a dismissToast() action,
-      // but I'll keep it here for simplicity
+      // Se um toast específico for dispensado, adicione-o à fila de remoção.
       if (toastId) {
         addToRemoveQueue(toastId)
       } else {
+        // Se nenhum toastId for especificado, dispense todos os toasts abertos.
         state.toasts.forEach((toast) => {
           addToRemoveQueue(toast.id)
         })
@@ -106,17 +113,18 @@ export const reducer = (state: State, action: Action): State => {
           t.id === toastId || toastId === undefined
             ? {
                 ...t,
-                open: false,
+                open: false, // Define 'open' como false para animar o fechamento
               }
             : t
         ),
       }
     }
     case "REMOVE_TOAST":
+      // Remove o toast do array de toasts.
       if (action.toastId === undefined) {
         return {
           ...state,
-          toasts: [],
+          toasts: [], // Remove todos se nenhum toastId for especificado
         }
       }
       return {
@@ -130,6 +138,8 @@ const listeners: Array<(state: State) => void> = []
 
 let memoryState: State = { toasts: [] }
 
+// A função `dispatch` é declarada aqui em um escopo mais alto
+// para que `addToRemoveQueue` possa acessá-la via closure ou escopo global.
 function dispatch(action: Action) {
   memoryState = reducer(memoryState, action)
   listeners.forEach((listener) => {
@@ -156,6 +166,7 @@ function toast({ ...props }: Toast) {
       id,
       open: true,
       onOpenChange: (open) => {
+        // Quando o toast é fechado (via clique, etc.), chame dismiss
         if (!open) dismiss()
       },
     },
@@ -172,18 +183,22 @@ function useToast() {
   const [state, setState] = React.useState<State>(memoryState)
 
   React.useEffect(() => {
+    // Adiciona o setState do hook como um listener.
+    // Isso garante que o componente que usa useToast será re-renderizado
+    // quando o memoryState global mudar.
     listeners.push(setState)
     return () => {
+      // Limpeza: remove o listener quando o componente é desmontado.
       const index = listeners.indexOf(setState)
       if (index > -1) {
         listeners.splice(index, 1)
       }
     }
-  }, [state])
+  }, []) // <<<< CORRIGIDO: Removido `state` das dependências. Rodará apenas uma vez.
 
   return {
     ...state,
-    toast,
+    toast, // Re-exporta a função global toast
     dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
   }
 }

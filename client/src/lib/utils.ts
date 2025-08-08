@@ -6,14 +6,16 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-US', {
+  // CORRIGIDO: Formatando para Real Brasileiro (BRL) e local pt-BR
+  return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
-    currency: 'USD'
+    currency: 'BRL'
   }).format(amount);
 }
 
 export function formatDate(date: string | Date): string {
-  return new Date(date).toLocaleDateString('en-US', {
+  // CORRIGIDO: Formatando para o local pt-BR
+  return new Date(date).toLocaleDateString('pt-BR', {
     year: 'numeric',
     month: 'short',
     day: 'numeric'
@@ -24,10 +26,11 @@ export function getRelativeTime(date: string | Date): string {
   const now = new Date();
   const targetDate = new Date(date);
   const diffInDays = Math.floor((now.getTime() - targetDate.getTime()) / (1000 * 60 * 60 * 24));
-  
-  if (diffInDays === 0) return 'Today';
-  if (diffInDays === 1) return 'Yesterday';
-  if (diffInDays < 7) return `${diffInDays} days ago`;
-  if (diffInDays < 30) return `${Math.floor(diffInDays / 7)} weeks ago`;
+
+  // CORRIGIDO: Tradução das mensagens de tempo relativo para português
+  if (diffInDays === 0) return 'Hoje';
+  if (diffInDays === 1) return 'Ontem';
+  if (diffInDays < 7) return `${diffInDays} dias atrás`;
+  if (diffInDays < 30) return `${Math.floor(diffInDays / 7)} semanas atrás`;
   return formatDate(date);
 }

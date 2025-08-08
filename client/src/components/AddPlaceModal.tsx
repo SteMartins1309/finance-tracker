@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription, 
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -53,7 +54,7 @@ export function AddPlaceModal({ open, onOpenChange }: Props) {
   const mutation = useMutation({
     mutationFn: (data: FormData) => apiRequest("POST", "/api/places", data),
     onSuccess: () => {
-      toast({ title: "Successo", description: "Local adicionado!" });
+      toast({ title: "Sucesso", description: "Local adicionado!" }); 
       queryClient.invalidateQueries({ queryKey: ["/api/places"] });
       onOpenChange(false);
       form.reset();
@@ -74,6 +75,9 @@ export function AddPlaceModal({ open, onOpenChange }: Props) {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Adicionar local</DialogTitle>
+          <DialogDescription>
+            Insira o nome do novo local (ex: casa, trabalho, shopping, etc.).
+          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>

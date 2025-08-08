@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription, 
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -53,7 +54,7 @@ export function AddPersonalCareTypeModal({ open, onOpenChange }: Props) {
   const mutation = useMutation({
     mutationFn: (data: FormData) => apiRequest("POST", "/api/personal-care-types", data),
     onSuccess: () => {
-      toast({ title: "Successo", description: "Tipo de cuidado pessoal adicionado!" });
+      toast({ title: "Sucesso", description: "Tipo de cuidado pessoal adicionado!" }); 
       queryClient.invalidateQueries({ queryKey: ["/api/personal-care-types"] });
       onOpenChange(false);
       form.reset();
@@ -74,6 +75,9 @@ export function AddPersonalCareTypeModal({ open, onOpenChange }: Props) {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Adicionar tipo de cuidado pessoal</DialogTitle>
+          <DialogDescription>
+            Insira o nome do novo tipo de cuidado pessoal (ex: salão de beleza, maquiagem, etc.).
+          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>

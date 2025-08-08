@@ -1,17 +1,20 @@
-// IMPORTS
+// src/components/add-expense-modal.tsx
 
-import { useState } from "react";
-import { useForm } from "react-hook-form"; 
-import { zodResolver } from "@hookform/resolvers/zod"; 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"; 
-import { z } from "zod"; 
-import { apiRequest } from "@/lib/queryClient";
+// IMPORTS (restante dos imports permanecem os mesmos)
+
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { z } from "zod";
+import { apiRequest } from "@/lib/queryClient"; // Certifique-se de que apiRequest pode ser tipado genericamente
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -25,6 +28,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -37,129 +41,85 @@ import { Calendar, Star, Plus } from "lucide-react";
 
 // IMPORTS DE MODAIS DE ADIÇÃO DE NOVOS COMPONENTES OU ITENS
 //----------------------------------------------------------------------------
-// Importa o componente AddOccasionalGroupModal
 import { AddOccasionalGroupModal } from "./AddOccasionalGroupModal";
-
-// Importa o componente AddFixedExpenseTypeModal
 import { AddFixedExpenseTypeModal } from "./AddFixedExpenseTypeModal";
-
-// Importa o componente AddSupermarketModal
 import { AddSupermarketModal } from "./AddSupermarketModal";
-
-// Importa o componente AddRestaurantModal
 import { AddRestaurantModal } from "./AddRestaurantModal";
-
-// Importa o componente AddServiceTypeModal
 import { AddServiceTypeModal } from "./AddServiceTypeModal";
-
-// Importa o componente AddLeisureTypeModal
+import { AddStudyTypeModal } from "./AddStudyTypeModal";
 import { AddLeisureTypeModal } from "./AddLeisureTypeModal";
-
-// Importa o componente AddPersonalCareTypeModal
 import { AddPersonalCareTypeModal } from "./AddPersonalCareTypeModal";
-
-// Importa o componente AddShopModal
 import { AddShopModal } from "./AddShopModal";
-
-// Importa o componente AddPlaceModal
 import { AddPlaceModal } from "./AddPlaceModal";
-
-// Importa o componente AddHealthTypeModal
 import { AddHealthTypeModal } from "./AddHealthTypeModal";
-
-// Importa o componente AddFamilyMemberModal
 import { AddFamilyMemberModal } from "./AddFamilyMemberModal";
-
-// Importa o componente AddCharityTypeModal
 import { AddCharityTypeModal } from "./AddCharityTypeModal";
 //----------------------------------------------------------------------------
-// fim dos IMPORTS DE MODAIS DE ADIÇÃO DE NOVOS ITENS
 
+import { RecentExpense, RecurringExpense } from "@/types/finance";
+
+
+// Define os tipos literais para os enums para facilitar as assertivas de tipo
+type PaymentMethodType = "pix" | "credit-card" | "debit-card" | "cash" | "bank-transfer";
+type ExpenseTypeType = "routine" | "occasional";
+type RoutineCategoryType = "fixed" | "supermarket" | "food" | "services" | "study" | "leisure" | "personal-care" | "shopping" | "transportation" | "health" | "family" | "charity";
+type FrequencyType = "weekly" | "monthly" | "semi-annually" | "annually";
+type OccasionTypeType = "normal" | "special";
+type FoodPurchaseTypeType = "in-person" | "online";
+type ShoppingPurchaseTypeType = "in-person" | "online";
+type ShoppingOccasionTypeType = "normal" | "special";
+type TransportModeType = "car" | "uber" | "bus" | "plane" | "subway" | "another";
 
 
 // EXPENSE SCHEMA: Define o esquema de validação para o formulário de adição de despesa
 const expenseSchema = z.object({
-
-  // Para todos os tipos de despesas
-  
   amount: z.string().refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
     message: "Amount must be a positive number",
-  }),  // Valor da despesa
-  purchaseDate: z.string().min(1, "Purchase date is required"),  // Data da compra
-  paymentMethod: z.enum(["pix", "credit-card", "debit-card", "cash", "bank-transfer"]),  // Método de pagamento
-  expenseType: z.enum(["routine", "occasional"]),  // Tipo de despesa (rotina ou ocasional)
-  routineCategory: z  // Categoria de despesa rotineira (se for rotina)
+  }),
+  purchaseDate: z.string().min(1, "Purchase date is required"),
+  paymentMethod: z.enum(["pix", "credit-card", "debit-card", "cash", "bank-transfer"]),
+  paymentStatus: z.enum(["paid", "pending"]).optional(),
+  expenseType: z.enum(["routine", "occasional"]),
+  routineCategory: z
     .enum([
-      "fixed",
-      "supermarket", 
-      "food",  
-      "services",     
-      "leisure",    
-      "personal-care",       
-      "shopping",  
-      "transportation",     
-      "health",  
-      "family",  
-      "charity",
+      "fixed", "supermarket", "food", "services", "study", "leisure", "personal-care",
+      "shopping", "transportation", "health", "family", "charity",
     ])
     .optional(),
-  occasionalGroupId: z.string().optional(),  // ID do grupo de despesas ocasionais (se for ocasional)
-  createdAt: z.string().optional(),  // Data de criação da despesa
+  occasionalGroupId: z.string().optional(),
+  createdAt: z.string().optional(),
 
-
-  // Para as subcategorias de despesas rotineiras
-
-  // Para a subcategoria 'fixed'
-  fixedExpenseTypeId: z.string().optional(),  // ID do tipo de despesa fixa
-  frequency: z.enum(["weekly", "monthly", "semi-annually", "annually"]).optional(),  // Frequência de pagamento
-
-  // Para a subcategoria 'supermarket'
-  supermarketId: z.string().optional(),  // ID do supermercado
-
-  // Campos para a subcategoria 'food'
-  restaurantId: z.string().optional(),  // ID do restaurante
-  occasionType: z.enum(["normal", "special"]).optional(),  // Tipo de ocasião
-  specialOccasionDescription: z.string().optional(),  // Descrição da ocasião especial
-  foodPurchaseType: z.enum(["in-person", "online"]).optional(),   // Modo de compra
-
-  // Campos para a subcategoria 'service'
-  serviceTypeId: z.string().optional(),  // ID do tipo de serviço
-  serviceDescription: z.string().optional(),  // Descrição do serviço
-
-  // Campos para a subcategoria 'leisure'
-  leisureTypeId: z.string().optional(),  // ID do tipo de lazer
-  leisureDescription: z.string().optional(),  // Descrição do lazer
-
-  // Campos para a subcategoria 'personal-care'
-  personalCareTypeId: z.string().optional(),  // ID do tipo de cuidado pessoal
-  personalCareDescription: z.string().optional(),  // Descrição do cuidado pessoal
-
-  // Campos para a subcategoria 'shopping'
-  shopId: z.string().optional(),  // ID da loja
-  shoppingPurchaseType: z.enum(["in-person", "online"]).optional(),  // Modo de compra
-  shoppingOccasionType: z.enum(["normal", "special"]).optional(),  // Tipo de ocasião
-  shoppingSpecialOccasionDescription: z.string().optional(),  // Descrição da ocasião especial
-
-  // Campos para a subcategoria 'transportation'
-  startPlaceId: z.string().optional(),  // ID do lugar de partida
-  endPlaceId: z.string().optional(),  // ID do lugar de destino
-  startingPoint: z.string().optional(),  // Ponto de partida
-  destination: z.string().optional(),  // Destino
-  transportMode: z.enum(["car", "uber", "public-transport", "walking", "bicycle"]).optional(),  // Modo de transporte
-  transportDescription: z.string().optional(),  // Descrição do transporte
-
-  // Campos para a subcategoria 'health'
-  healthTypeId: z.string().optional(),  // ID do tipo de demanda de saúde
-  healthDescription: z.string().optional(),  // Descrição da demanda de saúde
-
-  // Campos para a subcategoria 'family'
-  familyMemberId: z.string().optional(),  // ID do membro da família
-  familyDescription: z.string().optional(),  // Descrição da despesa familiar
-
-  // Campos para a subcategoria 'charity'
-  charityTypeId: z.string().optional(),  // ID do tipo de caridade
-  charityDescription: z.string().optional(),  // Descrição da despesa de caridade
-
+  fixedExpenseTypeId: z.string().optional(),
+  frequency: z.enum(["weekly", "monthly", "semi-annually", "annually"]).optional(),
+  supermarketId: z.string().optional(),
+  restaurantId: z.string().optional(),
+  occasionType: z.enum(["normal", "special"]).optional(),
+  specialOccasionDescription: z.string().optional(),
+  foodPurchaseType: z.enum(["in-person", "online"]).optional(),
+  serviceTypeId: z.string().optional(),
+  serviceDescription: z.string().optional(),
+  studyTypeId: z.string().optional(),
+  studyDescription: z.string().optional(),
+  leisureTypeId: z.string().optional(),
+  leisureDescription: z.string().optional(),
+  personalCareTypeId: z.string().optional(),
+  personalCareDescription: z.string().optional(),
+  shopId: z.string().optional(),
+  shoppingPurchaseType: z.enum(["in-person", "online"]).optional(),
+  shoppingOccasionType: z.enum(["normal", "special"]).optional(),
+  shoppingSpecialOccasionDescription: z.string().optional(),
+  startPlaceId: z.string().optional(),
+  endPlaceId: z.string().optional(),
+  startingPoint: z.string().optional(),
+  destination: z.string().optional(),
+  transportMode: z.enum(["car", "uber", "bus", "plane", "subway", "another"]).optional(),
+  transportDescription: z.string().optional(),
+  healthTypeId: z.string().optional(),
+  healthDescription: z.string().optional(),
+  familyMemberId: z.string().optional(),
+  familyDescription: z.string().optional(),
+  charityTypeId: z.string().optional(),
+  charityDescription: z.string().optional(),
 });
 
 
@@ -171,25 +131,30 @@ type ExpenseFormData = z.infer<typeof expenseSchema>;
 interface AddExpenseModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  expenseToEdit?: RecentExpense | null;
 }
 
 
 // ADD EXPENSE MODAL: Define o componente AddExpenseModal
-export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
+export function AddExpenseModal({ open, onOpenChange, expenseToEdit }: AddExpenseModalProps) {
 
-  
-  // HOOKS PARA GERENCIAR O ESTADO DOS MODAIS DE ADIÇÃO DE NOVOS ITENS
-  //-------------------------------------------------------------------------------  
-  
-  // Hook para gerenciar o estado dos modais de adição de novos itens
-  const [newItemDialogs, setNewItemDialogs] = useState<{
-    [key: string]: boolean;
-  }>({});
-  // Hook para gerenciar o estado dos toasts
+  const [addOccasionalGroupModalOpen, setAddOccasionalGroupModalOpen] = useState(false);
+  const [showAddFixedExpenseTypeModal, setShowAddFixedExpenseTypeModal] = useState(false);
+  const [showAddSupermarketModal, setShowAddSupermarketModal] = useState(false);
+  const [showAddRestaurantModal, setShowAddRestaurantModal] = useState(false);
+  const [addServiceTypeModalOpen, setAddServiceTypeModalOpen] = useState(false);
+  const [addStudyTypeModalOpen, setAddStudyTypeModalOpen] = useState(false);
+  const [addLeisureTypeModalOpen, setAddLeisureTypeModalOpen] = useState(false);
+  const [addPersonalCareTypeModalOpen, setAddPersonalCareTypeModalOpen] = useState(false);
+  const [addShopModalOpen, setAddShopModalOpen] = useState(false);
+  const [addPlaceModalOpen, setAddPlaceModalOpen] = useState(false);
+  const [addHealthTypeModalOpen, setAddHealthTypeModalOpen] = useState(false);
+  const [addFamilyMemberModalOpen, setAddFamilyMemberModalOpen] = useState(false);
+  const [addCharityTypeModalOpen, setAddCharityTypeModalOpen] = useState(false);
+
   const { toast } = useToast();
-  // Hook para gerenciar o estado do query client
   const queryClient = useQueryClient();
-  // Hook para gerenciar o estado do formulário
+
   const form = useForm<ExpenseFormData>({
     resolver: zodResolver(expenseSchema),
     defaultValues: {
@@ -197,243 +162,387 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
       purchaseDate: new Date().toISOString().split("T")[0],
       paymentMethod: "credit-card",
       expenseType: "routine",
+      routineCategory: undefined,
+      occasionalGroupId: undefined, fixedExpenseTypeId: undefined, frequency: undefined,
+      supermarketId: undefined, 
+      restaurantId: undefined, occasionType: undefined, specialOccasionDescription: undefined, foodPurchaseType: undefined,
+      serviceTypeId: undefined, serviceDescription: undefined, 
+      studyTypeId: undefined, studyDescription: undefined,
+      leisureTypeId: undefined, leisureDescription: undefined,
+      personalCareTypeId: undefined, personalCareDescription: undefined, 
+      shopId: undefined, shoppingPurchaseType: undefined, shoppingOccasionType: undefined, shoppingSpecialOccasionDescription: undefined,
+      startPlaceId: undefined, endPlaceId: undefined, startingPoint: undefined, destination: undefined,
+      transportMode: undefined, transportDescription: undefined, 
+      healthTypeId: undefined, healthDescription: undefined,
+      familyMemberId: undefined, familyDescription: undefined, 
+      charityTypeId: undefined, charityDescription: undefined,
     },
   });
-  // Hook para monitorar os valores do formulário
-  const watchedValues = form.watch();
-  // Hook para monitorar o tipo de despesa
-  const expenseType = watchedValues.expenseType;
-  // Hook para monitorar a categoria de despesa rotineira
-  const routineCategory = watchedValues.routineCategory;
-  // Hook para buscar dados de grupos de despesas ocasionais
-  const { data: occasionalGroups } = useQuery({
-    queryKey: ["/api/occasional-groups/open"],
-    enabled: expenseType === "occasional",
-  });
-  //-------------------------------------------------------------------------------
-  // fim dos HOOKS PARA GERENCIAR O ESTADO DOS MODAIS DE ADIÇÃO DE NOVOS ITENS
 
-  
+  // Helper para obter a data local formatada YYYY-MM-DD
+  const getLocalDateString = (date: Date) => {
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Efeito para preencher o formulário quando expenseToEdit muda
+  useEffect(() => {
+    if (expenseToEdit) {
+      const dateObj = new Date(expenseToEdit.purchaseDate);
+      const formattedDate = getLocalDateString(dateObj);
+
+      form.reset({
+        amount: String(expenseToEdit.amount),
+        purchaseDate: formattedDate,
+        paymentMethod: (expenseToEdit.paymentMethod as PaymentMethodType) || undefined,
+        paymentStatus: expenseToEdit.paymentStatus || "pending",
+        expenseType: (expenseToEdit.expenseType as ExpenseTypeType) || undefined,
+        routineCategory: (expenseToEdit.routineCategory as RoutineCategoryType) || undefined,
+        occasionalGroupId: expenseToEdit.occasionalGroupId ? String(expenseToEdit.occasionalGroupId) : undefined,
+
+        fixedExpenseTypeId: expenseToEdit.fixedExpenseTypeId ? String(expenseToEdit.fixedExpenseTypeId) : undefined,
+        frequency: (expenseToEdit.frequency as FrequencyType) || undefined,
+        supermarketId: expenseToEdit.supermarketId ? String(expenseToEdit.supermarketId) : undefined,
+        restaurantId: expenseToEdit.restaurantId ? String(expenseToEdit.restaurantId) : undefined,
+        occasionType: (expenseToEdit.occasionType as OccasionTypeType) || undefined,
+        specialOccasionDescription: expenseToEdit.specialOccasionDescription || undefined,
+        foodPurchaseType: (expenseToEdit.foodPurchaseType as FoodPurchaseTypeType) || undefined,
+        serviceTypeId: expenseToEdit.serviceTypeId ? String(expenseToEdit.serviceTypeId) : undefined,
+        serviceDescription: expenseToEdit.serviceDescription || undefined,
+        studyTypeId: expenseToEdit.studyTypeId ? String(expenseToEdit.studyTypeId) : undefined,
+        studyDescription: expenseToEdit.studyDescription || undefined,
+        leisureTypeId: expenseToEdit.leisureTypeId ? String(expenseToEdit.leisureTypeId) : undefined,
+        leisureDescription: expenseToEdit.leisureDescription || undefined,
+        personalCareTypeId: expenseToEdit.personalCareTypeId ? String(expenseToEdit.personalCareTypeId) : undefined,
+        personalCareDescription: expenseToEdit.personalCareDescription || undefined,
+        shopId: expenseToEdit.shopId ? String(expenseToEdit.shopId) : undefined,
+        shoppingPurchaseType: (expenseToEdit.shoppingPurchaseType as ShoppingPurchaseTypeType) || undefined,
+        shoppingOccasionType: (expenseToEdit.shoppingOccasionType as ShoppingOccasionTypeType) || undefined,
+        shoppingSpecialOccasionDescription: expenseToEdit.shoppingSpecialOccasionDescription || undefined,
+        startPlaceId: expenseToEdit.startPlaceId ? String(expenseToEdit.startPlaceId) : undefined,
+        endPlaceId: expenseToEdit.endPlaceId ? String(expenseToEdit.endPlaceId) : undefined,
+        startingPoint: expenseToEdit.startingPoint || undefined,
+        destination: expenseToEdit.destination || undefined,
+        transportMode: (expenseToEdit.transportMode as TransportModeType) || undefined,
+        transportDescription: expenseToEdit.transportDescription || undefined,
+        healthTypeId: expenseToEdit.healthTypeId ? String(expenseToEdit.healthTypeId) : undefined,
+        healthDescription: expenseToEdit.healthDescription || undefined,
+        familyMemberId: expenseToEdit.familyMemberId ? String(expenseToEdit.familyMemberId) : undefined,
+        familyDescription: expenseToEdit.familyDescription || undefined,
+        charityTypeId: expenseToEdit.charityTypeId ? String(expenseToEdit.charityTypeId) : undefined,
+        charityDescription: expenseToEdit.charityDescription || undefined,
+      });
+    } else {
+      const today = new Date();
+      const defaultPurchaseDate = getLocalDateString(today);
+
+      form.reset({
+        amount: "",
+        purchaseDate: defaultPurchaseDate,
+        paymentMethod: undefined,
+        paymentStatus: "pending",
+        expenseType: "routine",
+        routineCategory: undefined,
+        occasionalGroupId: undefined, fixedExpenseTypeId: undefined, frequency: undefined,
+        supermarketId: undefined, restaurantId: undefined, occasionType: undefined, specialOccasionDescription: undefined, foodPurchaseType: undefined,
+        serviceTypeId: undefined, serviceDescription: undefined, leisureTypeId: undefined, leisureDescription: undefined,
+        studyTypeId: undefined, studyDescription: undefined,
+        personalCareTypeId: undefined, personalCareDescription: undefined, shopId: undefined,
+        shoppingPurchaseType: undefined, shoppingOccasionType: undefined, shoppingSpecialOccasionDescription: undefined,
+        startPlaceId: undefined, endPlaceId: undefined, startingPoint: undefined, destination: undefined,
+        transportMode: undefined, transportDescription: undefined, healthTypeId: undefined, healthDescription: undefined,
+        familyMemberId: undefined, familyDescription: undefined, charityTypeId: undefined, charityDescription: undefined,
+      });
+    }
+  }, [expenseToEdit, open, form]);
+
+  const watchedValues = form.watch();
+  const expenseType = watchedValues.expenseType;
+  const routineCategory = watchedValues.routineCategory;
+
   // HOOKS PARA BUSCAR DADOS DE SUBCATEGORIAS ESPECÍFICAS
   //-------------------------------------------------------------------------------
-  
-  // Hook para buscar dados de tipos de despesas fixas
-  const { data: fixedExpenseTypes } = useQuery({
-    queryKey: ["/api/fixed-expense-types"],
-    enabled: routineCategory === "fixed",
-  });
-  
-  // Hook para buscar dados de supermercados
-  const { data: supermarkets } = useQuery({ 
-    queryKey: ["/api/supermarkets"],
-    enabled: routineCategory === "supermarket",
+
+  const { data: occasionalGroups = [], isLoading: occasionalGroupsLoading } = useQuery<Array<{ id: number; name: string; status: string; createdAt: string; description: string | null; iconName: string | null; }>>({
+    queryKey: ["/api/occasional-groups/open"],
+    enabled: open && expenseType === "occasional",
   });
 
-  // Hook para buscar dados de restaurantes
-  const { data: restaurants } = useQuery({
-    queryKey: ["/api/restaurants"],
-    enabled: routineCategory === "food",
-  });
+  const { data: fixedExpenseTypes = [], isLoading: fixedTypesLoading } = useQuery<Array<{ id: number; name: string; }>>({ queryKey: ["/api/fixed-expense-types"], enabled: open && routineCategory === "fixed", });
+  const { data: supermarkets = [], isLoading: supermarketsLoading } = useQuery<Array<{ id: number; name: string; }>>({ queryKey: ["/api/supermarkets"], enabled: open && routineCategory === "supermarket", });
+  const { data: restaurants = [], isLoading: restaurantsLoading } = useQuery<Array<{ id: number; name: string; }>>({ queryKey: ["/api/restaurants"], enabled: open && routineCategory === "food", });
+  const { data: serviceTypes = [], isLoading: serviceTypesLoading } = useQuery<Array<{ id: number; name: string; }>>({ queryKey: ["/api/service-types"], enabled: open && routineCategory === "services", });
+  const { data: studyTypes = [], isLoading: studyTypesLoading } = useQuery<Array<{ id: number; name: string; }>>({ queryKey: ["/api/study-types"], enabled: open && routineCategory === "study", });
+  const { data: leisureTypes = [], isLoading: leisureTypesLoading } = useQuery<Array<{ id: number; name: string; }>>({ queryKey: ["/api/leisure-types"], enabled: open && routineCategory === "leisure", });
+  const { data: personalCareTypes = [], isLoading: personalCareTypesLoading } = useQuery<Array<{ id: number; name: string; }>>({ queryKey: ["/api/personal-care-types"], enabled: open && routineCategory === "personal-care", });
+  const { data: shops = [], isLoading: shopsLoading } = useQuery<Array<{ id: number; name: string; }>>({ queryKey: ["/api/shops"], enabled: open && routineCategory === "shopping", });
+  const { data: places = [], isLoading: placesLoading } = useQuery<Array<{ id: number; name: string; }>>({ queryKey: ["/api/places"], enabled: open && routineCategory === "transportation", });
+  const { data: healthTypes = [], isLoading: healthTypesLoading } = useQuery<Array<{ id: number; name: string; }>>({ queryKey: ["/api/health-types"], enabled: open && routineCategory === "health", });
+  const { data: familyMembers = [], isLoading: familyMembersLoading } = useQuery<Array<{ id: number; name: string; }>>({ queryKey: ["/api/family-members"], enabled: open && routineCategory === "family", });
+  const { data: charityTypes = [], isLoading: charityTypesLoading } = useQuery<Array<{ id: number; name: string; }>>({ queryKey: ["/api/charity-types"], enabled: open && routineCategory === "charity", });
 
-  // Hook para buscar dados de tipos de serviços
-  const { data: serviceTypes } = useQuery({
-    queryKey: ["/api/service-types"],
-    enabled: routineCategory === "services",
-  });
+  // Cria um mapa para facilitar o acesso aos dados e status de loading por categoria
+  const categoryDataMap = {
+    "fixed": { data: fixedExpenseTypes, isLoading: fixedTypesLoading, addModalOpen: showAddFixedExpenseTypeModal, setAddModalOpen: setShowAddFixedExpenseTypeModal },
+    "supermarket": { data: supermarkets, isLoading: supermarketsLoading, addModalOpen: showAddSupermarketModal, setAddModalOpen: setShowAddSupermarketModal },
+    "food": { data: restaurants, isLoading: restaurantsLoading, addModalOpen: showAddRestaurantModal, setAddModalOpen: setShowAddRestaurantModal },
+    "services": { data: serviceTypes, isLoading: serviceTypesLoading, addModalOpen: addServiceTypeModalOpen, setAddModalOpen: setAddServiceTypeModalOpen },
+    "study": { data: studyTypes, isLoading: studyTypesLoading, addModalOpen: addStudyTypeModalOpen, setAddModalOpen: setAddStudyTypeModalOpen },
+    "leisure": { data: leisureTypes, isLoading: leisureTypesLoading, addModalOpen: addLeisureTypeModalOpen, setAddModalOpen: setAddLeisureTypeModalOpen },
+    "personal-care": { data: personalCareTypes, isLoading: personalCareTypesLoading, addModalOpen: addPersonalCareTypeModalOpen, setAddModalOpen: setAddPersonalCareTypeModalOpen },
+    "shopping": { data: shops, isLoading: shopsLoading, addModalOpen: addShopModalOpen, setAddModalOpen: setAddShopModalOpen },
+    "transportation": { data: places, isLoading: placesLoading, addModalOpen: addPlaceModalOpen, setAddModalOpen: setAddPlaceModalOpen },
+    "health": { data: healthTypes, isLoading: healthTypesLoading, addModalOpen: addHealthTypeModalOpen, setAddModalOpen: setAddHealthTypeModalOpen },
+    "family": { data: familyMembers, isLoading: familyMembersLoading, addModalOpen: addFamilyMemberModalOpen, setAddModalOpen: setAddFamilyMemberModalOpen },
+    "charity": { data: charityTypes, isLoading: charityTypesLoading, addModalOpen: addCharityTypeModalOpen, setAddModalOpen: setAddCharityTypeModalOpen },
+  };
+ 
 
-  // Hook para buscar dados de tipos de lazer
-  const { data: leisureTypes } = useQuery({
-    queryKey: ["/api/leisure-types"],
-    enabled: routineCategory === "leisure",
-  });
-
-  // Hook para buscar dados de tipos de cuidado pessoal
-  const { data: personalCareTypes } = useQuery({
-    queryKey: ["/api/personal-care-types"],
-    enabled: routineCategory === "personal-care",
-  });
-
-  // Hook para buscar dados de lojas
-  const { data: shops } = useQuery({
-    queryKey: ["/api/shops"],
-    enabled: routineCategory === "shopping",
-  });
-
-  // Hook para buscar dados de lugares
-  const { data: places } = useQuery({ 
-    queryKey: ["/api/places"],
-    enabled: routineCategory === "transportation", 
-  });
-
-  // Hook para buscar dados de tipos de saúde
-  const { data: healthTypes } = useQuery({
-    queryKey: ["/api/health-types"],
-    enabled: routineCategory === "health",
-  });
-
-  // Hook para buscar dados de membros da família
-  const { data: familyMembers } = useQuery({ 
-    queryKey: ["/api/family-members"],
-    enabled: routineCategory === "family", 
-  });
-
-  // Hook para buscar dados de tipos de caridade
-  const { data: charityTypes } = useQuery({ 
-    queryKey: ["/api/charity-types"],
-    enabled: routineCategory === "charity", 
-  });
+  // HOOKS PARA LIDAR COM A CRIAÇÃO E ATUALIZAÇÃO DE DESPESAS
   //-------------------------------------------------------------------------------
-  // fim dos HOOKS PARA BUSCAR DADOS DE SUBCATEGORIAS ESPECÍFICAS
-
-
-  // HOOKS PARA LIDAR COM A ADIÇÃO DE NOVOS COMPONENTES E ITENS
-  //-------------------------------------------------------------------------------
-  // Hooks para lidar com a adição de novos grupos de despesas ocasionais
-  const [addOccasionalGroupModalOpen, setAddOccasionalGroupModalOpen] = useState(false);
-
-  // Hooks para lidar com a adição de novos tipos de despesas fixas
-  const [showAddFixedExpenseTypeModal, setShowAddFixedExpenseTypeModal] = useState(false);
-  
-  // Hooks para lidar com a adição de novos supermercados
-  const [showAddSupermarketModal, setShowAddSupermarketModal] = useState(false); 
-
-  // Hooks para lidar com a adição de novos restaurantes
-  const [showAddRestaurantModal, setShowAddRestaurantModal] = useState(false); 
-
-  // Hooks para lidar com a adição de novos tipos de serviços
-  const [addServiceTypeModalOpen, setAddServiceTypeModalOpen] = useState(false);
-
-  // Hooks para lidar com a adição de novos tipos de lazer
-  const [addLeisureTypeModalOpen, setAddLeisureTypeModalOpen] = useState(false);
-
-  // Hooks para lidar com a adição de novos tipos de cuidado pessoal
-  const [addPersonalCareTypeModalOpen, setAddPersonalCareTypeModalOpen] = useState(false);
-
-  // Hooks para lidar com a adição de novas lojas
-  const [addShopModalOpen, setAddShopModalOpen] = useState(false);
-
-  // Hooks para lidar com a adição de novos lugares
-  const [addPlaceModalOpen, setAddPlaceModalOpen] = useState(false);
-
-  // Hooks para lidar com a adição de novos tipos de saúde
-  const [addHealthTypeModalOpen, setAddHealthTypeModalOpen] = useState(false);
-
-  // Hooks para lidar com a adição de novos membros da família
-  const [addFamilyMemberModalOpen, setAddFamilyMemberModalOpen] = useState(false);
-
-  // Hooks para lidar com a adição de novos tipos de caridade
-  const [addCharityTypeModalOpen, setAddCharityTypeModalOpen] = useState(false);
-  //-------------------------------------------------------------------------------
-  // fim dos HOOKS PARA LIDAR COM A ADIÇÃO DE NOVOS ITENS
-
-  
-  // HOOK PARA LIDAR COM A CRIAÇÃO DE NOVAS DESPESAS
-  const createExpenseMutation = useMutation({
-    mutationFn: async (data: any) => {
-      await apiRequest("POST", "/api/expenses", data);
+  const createExpenseMutation = useMutation<RecentExpense, Error, any>({
+    mutationFn: async (data: any): Promise<RecentExpense> => {
+      const response = await apiRequest("POST", "/api/expenses", data);
+      return response as RecentExpense; // Asserte o tipo de retorno
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/expenses"] });
+    onSuccess: (newExpense) => {
+      const purchaseDate = new Date(newExpense.purchaseDate);
+      const year = purchaseDate.getFullYear();
+      const month = purchaseDate.getMonth() + 1; // getMonth() é 0-indexado
+
+      // Invalida o "Painel"
       queryClient.invalidateQueries({ queryKey: ["/api/expenses/recent"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
-      toast({
-        title: "Success",
-        description: "Expense added successfully!",
-      });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats/monthly"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats/category-breakdown", new Date().getFullYear()] });
+
+      // Invalida a "Visualização Mensal" para o mês/ano do gasto
+      queryClient.invalidateQueries({ queryKey: ["/api/expenses/monthly", year, month] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats/category-breakdown", year, month] });
+
+      // Invalida as "Estatísticas Anuais" para o ano do gasto
+      queryClient.invalidateQueries({ queryKey: ["/api/stats/annual", year] });
+      queryClient.invalidateQueries({ queryKey: ["/api/expenses/yearly/monthly-summary", year] });
+
+      toast({ title: "Sucesso", description: "Gasto adicionado!" });
       onOpenChange(false);
-      form.reset();
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error("Erro ao adicionar gasto:", error);
       toast({
-        title: "Error",
-        description: "Failed to add expense. Please try again.",
+        title: "Erro",
+        description: error.message || "Falha ao adicionar gasto. Por favor, tente novamente.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutação para atualizar um gasto existente
+  const updateExpenseMutation = useMutation<RecentExpense, Error, { id: number, expense: any }>({
+    mutationFn: async (data): Promise<RecentExpense> => {
+      const response = await apiRequest("PATCH", `/api/expenses/${data.id}`, data.expense);
+      return response as RecentExpense; // Asserte o tipo de retorno
+    },
+    onSuccess: (updatedExpense) => {
+      const purchaseDate = new Date(updatedExpense.purchaseDate);
+      const year = purchaseDate.getFullYear();
+      const month = purchaseDate.getMonth() + 1;
+
+      // Invalida o "Painel"
+      queryClient.invalidateQueries({ queryKey: ["/api/expenses/recent"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats/monthly"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats/category-breakdown", new Date().getFullYear()] });
+
+      // Invalida a "Visualização Mensal" para o mês/ano do gasto
+      queryClient.invalidateQueries({ queryKey: ["/api/expenses/monthly", year, month] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats/category-breakdown", year, month] });
+
+      // Invalida as "Estatísticas Anuais" para o ano do gasto
+      queryClient.invalidateQueries({ queryKey: ["/api/stats/annual", year] });
+      queryClient.invalidateQueries({ queryKey: ["/api/expenses/yearly/monthly-summary", year] });
+
+      toast({ title: "Sucesso", description: "Gasto atualizado!" });
+      onOpenChange(false);
+    },
+    onError: (error: any) => {
+      console.error("Erro ao atualizar gasto:", error);
+      toast({
+        title: "Erro",
+        description: error.message || "Falha ao atualizar gasto. Por favor, tente novamente.",
         variant: "destructive",
       });
     },
   });
 
 
-  // ON SUBMIT: Função para lidar com o envio do formulário
+  // ON SUBMIT: Função para lidar com o envio do formulário (para criar OU atualizar)
   const onSubmit = (data: ExpenseFormData) => {
-    const expenseData = {
 
-      // Para todas as despesas
-      amount: data.amount,
+    // Apenas envia campos que estão preenchidos ou que são relevantes para o tipo de gasto
+    const expenseData: { [key: string]: any } = {
+      amount: parseFloat(data.amount),
       purchaseDate: new Date(data.purchaseDate),
       paymentMethod: data.paymentMethod,
       expenseType: data.expenseType,
-      routineCategory:
-        data.expenseType === "routine" ? data.routineCategory : null,
-      occasionalGroupId:
-        data.expenseType === "occasional" && data.occasionalGroupId
-          ? parseInt(data.occasionalGroupId)
-          : null,
-
-      
-      // Para as subcategorias de despesas rotineiras
-
-      // Para a subcategoria 'fixed'
-      fixedExpenseTypeId: data.fixedExpenseTypeId ? parseInt(data.fixedExpenseTypeId) : null,
-      frequency: data.routineCategory === "fixed" ? (data.frequency || null) : null,
-
-      // Para a subcategoria 'supermarket'
-      supermarketId: data.supermarketId ? parseInt(data.supermarketId) : null,
-
-      // Novos campos para a subcategoria 'food'
-      restaurantId: data.restaurantId ? parseInt(data.restaurantId) : null,
-      occasionType: data.routineCategory === "food" ? (data.occasionType || null) : null, 
-      specialOccasionDescription: data.routineCategory === "food" && data.occasionType === "special" ? (data.specialOccasionDescription || null) : null,
-      foodPurchaseType: data.routineCategory === "food" ? (data.foodPurchaseType || null) : null, 
-
-      // Novos campos para a subcategoria 'services'
-      serviceTypeId: data.serviceTypeId ? parseInt(data.serviceTypeId) : null,
-      serviceDescription: data.routineCategory === "services" ? (data.serviceDescription || null) : null,
-
-      // Novos campos para a subcategoria 'leisure'
-      leisureTypeId: data.leisureTypeId ? parseInt(data.leisureTypeId) : null,
-      leisureDescription: data.routineCategory === "leisure" ? (data.leisureDescription || null) : null,
-
-      // Para a subcategoria 'personal-care'
-      personalCareTypeId: data.personalCareTypeId ? parseInt(data.personalCareTypeId) : null,
-      personalCareDescription: data.routineCategory === "personal-care" ? (data.personalCareDescription || null) : null,
-
-      // Para a subcategoria 'shopping'
-      shopId: data.routineCategory === "shopping" && data.shopId ? parseInt(data.shopId) : null,
-      shoppingPurchaseType: data.routineCategory === "shopping" ? (data.shoppingPurchaseType || null) : null,
-      shoppingOccasionType: data.routineCategory === "shopping" ? (data.shoppingOccasionType || null) : null,
-      shoppingSpecialOccasionDescription: data.routineCategory === "shopping" && data.shoppingOccasionType === "special" ? (data.shoppingSpecialOccasionDescription || null) : null,
-
-      // Para a subcategoria 'transportation'
-      startPlaceId: data.routineCategory === "transportation" && data.startPlaceId ? parseInt(data.startPlaceId) : null,
-      endPlaceId: data.routineCategory === "transportation" && data.endPlaceId ? parseInt(data.endPlaceId) : null,
-      startingPoint: data.routineCategory === "transportation" ? (data.startingPoint || null) : null,
-      destination: data.routineCategory === "transportation" ? (data.destination || null) : null,
-      transportMode: data.transportMode || null,
-      transportDescription: data.routineCategory === "transportation" ? (data.transportDescription || null) : null,
-
-      // Novos campos para a subcategoria 'health'
-      healthTypeId: data.healthTypeId ? parseInt(data.healthTypeId) : null,
-      healthDescription: data.routineCategory === "health" ? (data.healthDescription || null) : null,
-
-      // Para a subcategoria 'family'
-      familyMemberId: data.familyMemberId ? parseInt(data.familyMemberId) : null,
-      familyDescription: data.routineCategory === "family" ? (data.familyDescription || null) : null,
-
-      // Para a subcategoria 'charity'
-      charityTypeId: data.charityTypeId ? parseInt(data.charityTypeId) : null,
-      charityDescription: data.routineCategory === "charity" ? (data.charityDescription || null) : null,
-
-      
     };
 
-    createExpenseMutation.mutate(expenseData);
+    // Ajusta a categoria de rotina e o grupo ocasional com base no expenseType
+    if (data.expenseType === "routine") {
+      expenseData.routineCategory = data.routineCategory || null;
+      expenseData.occasionalGroupId = null; // Zera o ID do grupo ocasional se o tipo for rotina
+    } else { // expenseType === "occasional"
+      expenseData.occasionalGroupId = data.occasionalGroupId ? Number(data.occasionalGroupId) : null;
+      expenseData.routineCategory = data.routineCategory || null; // Mantenha routineCategory se selecionado
+    }
+
+    // Zera os campos de subcategoria se não corresponderem à routineCategory selecionada
+    // OU se o expenseType for 'occasional' (para garantir limpeza, embora a UI não os mostre)
+    // A lógica de `data.routineCategory !== "x"` já faz o trabalho.
+    // Não precisamos mais do `else` extenso em cada `if`.
+    // Isso garante que apenas os campos da categoria selecionada sejam mantidos.
+
+    // Campos de subcategoria 'fixed'
+    if (data.routineCategory !== "fixed") {
+      expenseData.fixedExpenseTypeId = null;
+      expenseData.frequency = null;
+    } else {
+      expenseData.fixedExpenseTypeId = data.fixedExpenseTypeId ? Number(data.fixedExpenseTypeId) : null;
+      expenseData.frequency = data.frequency || null;
+    }
+
+    // Campos de subcategoria 'supermarket'
+    if (data.routineCategory !== "supermarket") {
+      expenseData.supermarketId = null;
+    } else {
+      expenseData.supermarketId = data.supermarketId ? Number(data.supermarketId) : null;
+    }
+
+    // Campos de subcategoria 'food'
+    if (data.routineCategory !== "food") {
+      expenseData.restaurantId = null;
+      expenseData.occasionType = null;
+      expenseData.specialOccasionDescription = null;
+      expenseData.foodPurchaseType = null;
+    } else {
+      expenseData.restaurantId = data.restaurantId ? Number(data.restaurantId) : null;
+      expenseData.occasionType = data.occasionType || null;
+      expenseData.specialOccasionDescription = (data.occasionType === "special" && data.specialOccasionDescription) ? data.specialOccasionDescription : null;
+      expenseData.foodPurchaseType = data.foodPurchaseType || null;
+    }
+
+    // Campos de subcategoria 'services'
+    if (data.routineCategory !== "services") {
+      expenseData.serviceTypeId = null;
+      expenseData.serviceDescription = null;
+    } else {
+      expenseData.serviceTypeId = data.serviceTypeId ? Number(data.serviceTypeId) : null;
+      expenseData.serviceDescription = data.serviceDescription || null;
+    }
+
+    // Campos de subcategoria 'study' 
+  if (data.routineCategory !== "study") {
+    expenseData.studyTypeId = null;
+    expenseData.studyDescription = null;
+  } else {
+    expenseData.studyTypeId = data.studyTypeId ? Number(data.studyTypeId) : null;
+    expenseData.studyDescription = data.studyDescription || null;
+  }
+
+    // Campos de subcategoria 'leisure'
+    if (data.routineCategory !== "leisure") {
+      expenseData.leisureTypeId = null;
+      expenseData.leisureDescription = null;
+    } else {
+      expenseData.leisureTypeId = data.leisureTypeId ? Number(data.leisureTypeId) : null;
+      expenseData.leisureDescription = data.leisureDescription || null;
+    }
+
+    // Campos de subcategoria 'personal-care'
+    if (data.routineCategory !== "personal-care") {
+      expenseData.personalCareTypeId = null;
+      expenseData.personalCareDescription = null;
+    } else {
+      expenseData.personalCareTypeId = data.personalCareTypeId ? Number(data.personalCareTypeId) : null;
+      expenseData.personalCareDescription = data.personalCareDescription || null;
+    }
+
+    // Campos de subcategoria 'shopping'
+    if (data.routineCategory !== "shopping") {
+      expenseData.shopId = null;
+      expenseData.shoppingPurchaseType = null;
+      expenseData.shoppingOccasionType = null;
+      expenseData.shoppingSpecialOccasionDescription = null;
+    } else {
+      expenseData.shopId = data.shopId ? Number(data.shopId) : null;
+      expenseData.shoppingPurchaseType = data.shoppingPurchaseType || null;
+      expenseData.shoppingOccasionType = data.shoppingOccasionType || null;
+      expenseData.shoppingSpecialOccasionDescription = (data.shoppingOccasionType === "special" && data.shoppingSpecialOccasionDescription) ? data.shoppingSpecialOccasionDescription : null;
+    }
+
+    // Campos de subcategoria 'transportation'
+    if (data.routineCategory !== "transportation") {
+      expenseData.startPlaceId = null;
+      expenseData.endPlaceId = null;
+      expenseData.startingPoint = null;
+      expenseData.destination = null;
+      expenseData.transportMode = null;
+      expenseData.transportDescription = null;
+    } else {
+      expenseData.startPlaceId = data.startPlaceId ? Number(data.startPlaceId) : null;
+      expenseData.endPlaceId = data.endPlaceId ? Number(data.endPlaceId) : null;
+      expenseData.startingPoint = data.startingPoint || null;
+      expenseData.destination = data.destination || null;
+      expenseData.transportMode = data.transportMode || null;
+      expenseData.transportDescription = data.transportDescription || null;
+    }
+
+    // Campos de subcategoria 'health'
+    if (data.routineCategory !== "health") {
+      expenseData.healthTypeId = null;
+      expenseData.healthDescription = null;
+    } else {
+      expenseData.healthTypeId = data.healthTypeId ? Number(data.healthTypeId) : null;
+      expenseData.healthDescription = data.healthDescription || null;
+    }
+
+    // Campos de subcategoria 'family'
+    if (data.routineCategory !== "family") {
+      expenseData.familyMemberId = null;
+      expenseData.familyDescription = null;
+    } else {
+      expenseData.familyMemberId = data.familyMemberId ? Number(data.familyMemberId) : null;
+      expenseData.familyDescription = data.familyDescription || null;
+    }
+
+    // Campos de subcategoria 'charity'
+    if (data.routineCategory !== "charity") {
+      expenseData.charityTypeId = null;
+      expenseData.charityDescription = null;
+    } else {
+      expenseData.charityTypeId = data.charityTypeId ? Number(data.charityTypeId) : null;
+      expenseData.charityDescription = data.charityDescription || null;
+    }
+
+    if (data.expenseType === "occasional") {
+      expenseData.occasionalGroupId = data.occasionalGroupId ? Number(data.occasionalGroupId) : null;
+    } else { // expenseType === "routine"
+      expenseData.occasionalGroupId = null;
+    }
+
+    if (expenseToEdit?.id) {
+      updateExpenseMutation.mutate({ id: expenseToEdit.id, expense: expenseData });
+    } else {
+      createExpenseMutation.mutate(expenseData);
+    }
   };
 
 
-  // ADD NEW BUTTON: Componente para adicionar novos itens
-  const AddNewButton = ({ onClick, label}: {
+  // ADD NEW BUTTON: Componente para adicionar novos itens (funcionalidade auxiliar)
+  const AddNewButton = ({ onClick, label, isLoading = false }: {
     onClick: () => void;
     label: string;
+    isLoading?: boolean;
   }) => (
     <Button
       type="button"
@@ -441,141 +550,82 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
       size="sm"
       onClick={onClick}
       className="ml-2 h-9"
+      disabled={isLoading}
     >
-      <Plus className="h-4 w-4 mr-1" />
-      {label}
+      <Plus className="mr-2 h-4 w-4" />
+      {isLoading ? "Carregando..." : label}
     </Button>
   );
 
   // RENDERIZAÇÃO DO COMPONENTE
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>  {/* Início do modal de adição de despesa*/}
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">  
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Adicione nova despesa</DialogTitle>  {/* Título do modal*/}
+          <DialogTitle>{expenseToEdit ? "Editar Gasto" : "Adicione nova despesa"}</DialogTitle>
+          <DialogDescription>
+            {expenseToEdit ? "Modifique os detalhes do gasto existente." : "Preencha os detalhes da sua nova despesa."}
+          </DialogDescription>
         </DialogHeader>
 
-        <Form {...form}>  {/* Início do formulário de adição de despesa*/}
-          
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">  
-            
-            {/*  Início do campo comum: expenseType  */ }
-            <FormField 
-              control={form.control}
-              name="expenseType"
-              render={({ field }) => (
-                <FormItem> 
-                  <FormLabel>Tipo de gasto</FormLabel>  {/* Rótulo do campo*/}
-                  <FormControl>  
-                    <RadioGroup
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                      className="grid grid-cols-2 gap-4"
-                    >
-                      <div className="flex items-center space-x-2 p-4 border rounded-lg">
-                        <RadioGroupItem value="routine" id="routine" />
-                        <label
-                          htmlFor="routine"  
-                          className="flex-1 cursor-pointer"
-                        >
-                          <div className="text-center">
-                            <Calendar className="mx-auto mb-2 h-6 w-6 text-primary" />
-                            <p className="font-medium">Gasto de Rotina</p>  {/* Opção de gasto de rotina*/}
-                            <p className="text-sm text-muted-foreground">
-                              Gastos recorrentes
-                            </p>
-                          </div>
-                        </label>
-                      </div>
-                      <div className="flex items-center space-x-2 p-4 border rounded-lg">
-                        <RadioGroupItem value="occasional" id="occasional" />
-                        <label
-                          htmlFor="occasional"
-                          className="flex-1 cursor-pointer"
-                        >
-                          <div className="text-center">
-                            <Star className="mx-auto mb-2 h-6 w-6 text-accent" />
-                            <p className="font-medium">Gasto de Ocasião</p>  {/* Opção de gasto de ocasião*/}
-                            <p className="text-sm text-muted-foreground">
-                              Gastos de situações especiais
-                            </p>
-                          </div>
-                        </label>
-                      </div>
-                    </RadioGroup>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />  
-            {/*  Fim do campo comum: expenseType  */ }
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
 
+            {/* 1. Data do Gasto, Valor */}
             <div className="grid grid-cols-2 gap-4">
-              
-              {/* Início do campo comum: purchaseDate */}
               <FormField
                 control={form.control}
                 name="purchaseDate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Data do gasto</FormLabel>  {/* Rótulo do campo*/}
+                    <FormLabel>Data do gasto</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} />
+                      <Input
+                        type="date"
+                        {...field}
+                        value={field.value}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              {/* Fim do campo comum: purchaseDate */}
-
-              {/* Início do campo comum: amount */}
               <FormField
                 control={form.control}
                 name="amount"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Valor</FormLabel>  {/* Rótulo do campo*/}
+                    <FormLabel>Valor</FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <span className="absolute left-3 top-2.5 text-muted-foreground">
-                          $
-                        </span>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          placeholder="0.00"
-                          className="pl-8"
-                          {...field}
-                        />
+                        <span className="absolute left-3 top-2.5 text-muted-foreground">R$</span>
+                        <Input type="number" step="0.01" placeholder="0.00" className="pl-8" {...field} />
                       </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              {/* Fim do campo comum: amount */}
             </div>
 
-            {/* Início do campo comum: paymentMethod */}
-            <FormField  
+            {/* 2. Forma de Pagamento */}
+            <FormField
               control={form.control}
               name="paymentMethod"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Forma de pagamento</FormLabel>  {/* Rótulo do campo*/}
+                  <FormLabel>Forma de pagamento</FormLabel>
                   <Select
                     onValueChange={field.onChange}
-                    defaultValue={field.value}
+                    value={field.value || ""}
                   >
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione a forma de pagamento" />  {/* Placeholder do campo*/}
-                      </SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder="Selecione a forma de pagamento" /></SelectTrigger>
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="pix">Pix</SelectItem>
                       <SelectItem value="debit-card">Cartão de Débito</SelectItem>
-                      <SelectItem value="credit-card">Cartão de Crédito</SelectItem>                      
+                      <SelectItem value="credit-card">Cartão de Crédito</SelectItem>
                       <SelectItem value="cash">Dinheiro</SelectItem>
                       <SelectItem value="bank-transfer">Transferência Bancária</SelectItem>
                     </SelectContent>
@@ -584,858 +634,153 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
                 </FormItem>
               )}
             />
-            {/* Fim do campo comum: paymentMethod */}
 
-            {/* Renderiza campos específicos para 'routine' */}
-            {expenseType === "routine" && (  // 
-              <div className="space-y-6">
-                
-                {/* Início do campo: routineCategory */}
-                <FormField 
-                  control={form.control}
-                  name="routineCategory"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Categorias de Gastos de Rotina</FormLabel>  {/* Rótulo do campo*/}
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione a categoria" />  {/* Placeholder do campo*/}
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="fixed">Fixos</SelectItem>
-                          <SelectItem value="supermarket">Supermercado</SelectItem>
-                          <SelectItem value="food">Alimentação</SelectItem>
-                          <SelectItem value="services">Serviços</SelectItem>
-                          <SelectItem value="leisure">Lazer</SelectItem>
-                          <SelectItem value="personal-care">Cuidado Pessoal</SelectItem>
-                          <SelectItem value="shopping">Compras</SelectItem>
-                          <SelectItem value="transportation">Transporte</SelectItem>
-                          <SelectItem value="health">Saúde</SelectItem>
-                          <SelectItem value="family">Família</SelectItem>
-                          <SelectItem value="charity">Caridade</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
+            {/* 2.1 Status do pagamento */}
+            <FormField
+            control={form.control}
+            name="paymentStatus"
+            render={({ field }) => (
+              <FormItem className="space-y-3">
+                <FormLabel>Status de Pagamento</FormLabel>
+                <FormControl>
+                  <RadioGroup
+                    onValueChange={field.onChange}
+                    defaultValue={field.value || "pending"}
+                    className="flex flex-col space-y-1"
+                  >
+                    <FormItem className="flex items-center space-x-3 space-y-0">
+                      <FormControl>
+                        <RadioGroupItem value="pending" />
+                      </FormControl>
+                      <FormLabel className="font-normal">
+                        Não Pago (Previsto)
+                      </FormLabel>
                     </FormItem>
-                  )}
-                /> 
-                {/* Fim do campo: routineCategory */}
-
-                {/* Renderizados dependendo da routineCategory */}
-
-                {/*  Início da subcategoria 'fixed'  */}
-                {routineCategory === "fixed" && ( 
-                  <div className="space-y-4">  
-                    <div className="flex items-end space-x-2">
-                      {/*  Início do campo específico: fixedExpenseTypeId  */}
-                      <FormField
-                        control={form.control}
-                        name="fixedExpenseTypeId"
-                        render={({ field }) => (
-                          <FormItem className="flex-1">
-                            <FormLabel>Tipo de despesa fixa</FormLabel>  {/* Rótulo do campo*/}
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Selecione o tipo de despesa fixa" />  {/* Placeholder do campo*/}
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {fixedExpenseTypes?.map((type: any) => (
-                                  <SelectItem key={type.id} value={type.id.toString()}>
-                                    {type.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      {/*  Fim do campo específico: fixedExpenseTypeId  */}
-                      
-                      <AddNewButton  // Botão para adicionar novos tipos de despesas fixas
-                        onClick={() => setShowAddFixedExpenseTypeModal(true)} 
-                        label="Adicionar Novo"
-                      />
-                    </div>
-
-                    {/*  Início do campo específico: frequency  */}
-                    <FormField  
-                      control={form.control}
-                      name="frequency"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Frequência</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione a frequência desse gasto" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="weekly">Semanalmente</SelectItem>
-                              <SelectItem value="monthly">Mensalmente</SelectItem>
-                              <SelectItem value="semi-annually">Semestralmente</SelectItem>
-                              <SelectItem value="annually">Anualmente</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    {/*  Fim do campo específico: frequency  */}
-                  </div>
-                )}        
-                {/*  Fim da subcategoria 'fixed'  */}                
-                
-                {/*  Início da subcategoria 'supermarket'  */}
-                {routineCategory === "supermarket" && ( 
-                  <div className="flex items-end space-x-2">
-
-                    {/*  Início do campo específico: supermarketId  */}
-                    <FormField 
-                      control={form.control}
-                      name="supermarketId"
-                      render={({ field }) => (
-                        <FormItem className="flex-1">
-                          <FormLabel>Supermercado</FormLabel>  {/* Rótulo do campo*/}
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione o supermercado" />  {/* Placeholder do campo*/}
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {supermarkets?.map((supermarket: any) => (
-                                <SelectItem key={supermarket.id} value={supermarket.id.toString()}>
-                                  {supermarket.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    {/*  Fim do campo específico: supermarketId  */}
-                    
-                    <AddNewButton  // Botão para adicionar novos supermercados
-                      onClick={() => setShowAddSupermarketModal(true)}
-                      label="Adicionar Novo"
-                    />
-                  </div>
-                )}
-                {/*  Fim da subcategoria 'supermarket'  */}
-
-                {/*  Início da subcategoria 'food'  */}      
-                {routineCategory === "food" && (
-                  <div className="space-y-4">
-                    {/* Início do campo específico: restaurantId */}
-                    <div className="flex items-end space-x-2">
-                      <FormField control={form.control} name="restaurantId" render={({ field }) => (
-                        <FormItem className="flex-1">
-                          <FormLabel>Restaurante</FormLabel>  {/* Rótulo do campo*/}
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione o restaurante" />  {/* Placeholder do campo*/}
-                              </SelectTrigger>
-                            </FormControl>  
-                            <SelectContent>
-                              {restaurants?.map((restaurant: any) => (<SelectItem key={restaurant.id} value={restaurant.id.toString()}>{restaurant.name}</SelectItem>))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )} />
-                      {/* Fim do campo específico: restaurantId */}
-                      
-                      <AddNewButton  // Botão para adicionar novos restaurantes
-                        onClick={() => setShowAddRestaurantModal(true)} 
-                        label="Adicionar Novo" />
-                    </div>
-                    
-                    {/* Início do campo específico: foodPurchaseType */}
-                    <FormField control={form.control} name="foodPurchaseType" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Forma de Pedido</FormLabel>  {/* Rótulo do campo*/}
-                        <FormControl>
-                          <RadioGroup onValueChange={field.onChange} value={field.value} className="flex space-x-4">
-                            <div className="flex items-center space-x-2"><RadioGroupItem value="in-person" id="food-in-person" /><label htmlFor="food-in-person">No local</label></div>
-                            <div className="flex items-center space-x-2"><RadioGroupItem value="online" id="food-online" /><label htmlFor="food-online">À distância</label></div>
-                          </RadioGroup>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    {/* Fim do campo específico: foodPurchaseType */}
-
-                    {/* Início do campo específico: occasionType */}
-                    <FormField control={form.control} name="occasionType" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Ocasião</FormLabel>  {/* Rótulo do campo*/}
-                        <FormControl>
-                          <RadioGroup onValueChange={field.onChange} value={field.value} className="flex space-x-4">
-                            <div className="flex items-center space-x-2"><RadioGroupItem value="normal" id="occasion-normal" /><label htmlFor="occasion-normal">Normal</label></div>
-                            <div className="flex items-center space-x-2"><RadioGroupItem value="special" id="occasion-special" /><label htmlFor="occasion-special">Especial</label></div>
-                          </RadioGroup>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    {watchedValues.occasionType === "special" && (
-                      <FormField control={form.control} name="specialOccasionDescription" render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Descrição da Ocasião Especial</FormLabel>  {/* Rótulo do campo*/}
-                          <FormControl><Textarea placeholder="ex: aniversário de alguém, celebração de algo..." rows={2} {...field} /></FormControl>  {/* Placeholder do campo*/}
-                          <FormMessage />
-                        </FormItem>
-                      )} />
-                    )}
-                    {/* Fim do campo específico: occasionType */}
-                  </div>
-                )}
-                {/* Fim da subcategoria 'food' */}
-
-                {/* Início da subcategoria 'services' */}
-                {routineCategory === "services" && (
-                  <div className="space-y-4">
-                    <div className="flex items-end space-x-2">
-
-                      {/* Início do campo específico: serviceTypeId */}
-                      <FormField 
-                        control={form.control}
-                        name="serviceTypeId"
-                        render={({ field }) => (
-                          <FormItem className="flex-1">
-                            <FormLabel>Tipo de Serviço</FormLabel>  {/* Rótulo do campo*/}
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Selecione o tipo de serviço" />  {/* Placeholder do campo */}
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {serviceTypes?.map((type: any) => (
-                                  <SelectItem key={type.id} value={type.id.toString()}>
-                                    {type.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      {/* Fim do campo específico: serviceTypeId */}
-                      
-                      <AddNewButton  // Botão para adicionar novos tipos de serviços
-                        onClick={() => setAddServiceTypeModalOpen(true)}
-                        label="Adicionar Novo"
-                      />
-                    </div>
-
-                    {/* Início do campo específico: serviceDescription */}
-                    <FormField 
-                      control={form.control}
-                      name="serviceDescription"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Descrição do Serviço</FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder="Descreva o serviço (ex: Troca de óleo, Limpeza de casa)..."
-                              rows={2}
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    {/* Fim do campo específico: serviceDescription */}
-                  </div>
-                )}
-                {/* Fim da subcategoria 'services' */}
-
-                {/* Início da subcategoria 'leisure' */}
-                {routineCategory === "leisure" && ( 
-                  <div className="space-y-4">
-                    <div className="flex items-end space-x-2">
-
-                      {/* Início do campo específico: leisureTypeId */}
-                      <FormField 
-                        control={form.control}
-                        name="leisureTypeId"
-                        render={({ field }) => (
-                          <FormItem className="flex-1">
-                            <FormLabel>Tipo de Lazer</FormLabel>  {/* Rótulo do campo*/}
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Selecione o tipo de lazer" />  {/* Placeholder do campo*/}
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {leisureTypes?.map((type: any) => (
-                                  <SelectItem key={type.id} value={type.id.toString()}>
-                                    {type.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      {/* Fim do campo específico: leisureTypeId */}
-                      
-                      <AddNewButton  // Botão para adicionar novos tipos de lazer
-                        onClick={() => setAddLeisureTypeModalOpen(true)}
-                        label="Adicionar Novo"
-                      />
-                    </div>
-
-                    {/* Início do campo específico: leisureDescription */}
-                    <FormField 
-                      control={form.control}
-                      name="leisureDescription"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Descrição do Lazer</FormLabel>  {/* Rótulo do campo*/}
-                          <FormControl>
-                            <Textarea
-                              placeholder="Descreva a atividade de lazer (ex: Cinema, Jantar fora)..."  /* Placeholder do campo*/
-                              rows={2}
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    {/* Fim do campo específico: leisureDescription */}
-                  </div>
-                )}
-                {/* Fim da subcategoria 'leisure' */}
-
-                {/* Início da subcategoria 'personal-care' */}
-                {routineCategory === "personal-care" && ( 
-                  <div className="space-y-4">
-                    <div className="flex items-end space-x-2">
-
-                      {/* Início do campo específico: personalCareTypeId */}
-                      <FormField  
-                        control={form.control}
-                        name="personalCareTypeId"
-                        render={({ field }) => (
-                          <FormItem className="flex-1">
-                            <FormLabel>Tipo de Cuidado Pessoal</FormLabel>  {/* Rótulo do campo*/}
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Selecione o tipo de cuidado pessoal" />  {/* Placeholder do campo*/}
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {personalCareTypes?.map((type: any) => (
-                                  <SelectItem key={type.id} value={type.id.toString()}>
-                                    {type.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      {/* Fim do campo específico: personalCareTypeId */}
-                      
-                      <AddNewButton  // Botão para adicionar novos tipos de cuidado pessoal
-                        onClick={() => setAddPersonalCareTypeModalOpen(true)}
-                        label="Adicionar Novo"
-                      />
-                    </div>
-
-                    {/* Início do campo específico: personalCareDescription */}
-                    <FormField  
-                      control={form.control}
-                      name="personalCareDescription"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Descrição do Cuidado Pessoal</FormLabel>  {/* Rótulo do campo*/}
-                          <FormControl>
-                            <Textarea
-                              placeholder="Descreva o gasto (ex: Salão de beleza, Consulta com dermatologista)..."  /* Placeholder do campo*/
-                              rows={2}
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    {/* Fim do campo específico: personalCareDescription */}
-                  </div>
-                )}
-                {/* Fim da subcategoria 'personal-care' */}
-
-                {/* Início da subcategoria 'shopping' */}
-                {routineCategory === "shopping" && ( 
-                  <div className="space-y-4">
-                    <div className="flex items-end space-x-2">
-                      {/* Início do campo específico: shopId */}
-                      <FormField 
-                        control={form.control}
-                        name="shopId"
-                        render={({ field }) => (
-                          <FormItem className="flex-1">
-                            <FormLabel>Loja</FormLabel>  {/* Rótulo do campo*/}
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Selecione a loja" />  {/* Placeholder do campo*/}
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {shops?.map((shop: any) => ( 
-                                  <SelectItem key={shop.id} value={shop.id.toString()}>
-                                    {shop.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      {/* Fim do campo específico: shopId */}
-                      
-                      <AddNewButton  // Botão para adicionar novas lojas
-                        onClick={() => setAddShopModalOpen(true)}
-                        label="Adicionar Nova"
-                      />
-                    </div>
-
-                    {/* Início do campo específico: shoppingPurchaseType */}
-                    <FormField
-                      control={form.control}
-                      name="shoppingPurchaseType"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Tipo de Compra</FormLabel>  {/* Rótulo do campo*/}
-                          <FormControl>
-                            <RadioGroup
-                              onValueChange={field.onChange}
-                              value={field.value}
-                              className="flex space-x-4"
-                            >
-                              <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="in-person" id="shopping-in-person" />
-                                <label htmlFor="shopping-in-person">Presencial</label>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="online" id="shopping-online" />
-                                <label htmlFor="shopping-online">Online</label>
-                              </div>
-                            </RadioGroup>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    {/* Fim do campo específico: shoppingPurchaseType */}
-
-                    {/* Início do campo específico: shoppingOccasionType */}
-                    <FormField
-                      control={form.control}
-                      name="shoppingOccasionType" 
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Ocasião da Compra</FormLabel>  {/* Rótulo do campo*/}
-                          <FormControl>
-                            <RadioGroup
-                              onValueChange={field.onChange}
-                              value={field.value}
-                              className="flex space-x-4"
-                            >
-                              <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="normal" id="shopping-occasion-normal" />
-                                <label htmlFor="shopping-occasion-normal">Normal</label>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="special" id="shopping-occasion-special" />
-                                <label htmlFor="shopping-occasion-special">Especial</label>
-                              </div>
-                            </RadioGroup>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    {watchedValues.shoppingOccasionType === "special" && ( // Condicional para descrição
-                      <FormField
-                        control={form.control}
-                        name="shoppingSpecialOccasionDescription"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Descrição da Ocasião Especial</FormLabel>  {/* Rótulo do campo*/}
-                            <FormControl>
-                              <Textarea
-                                placeholder="Descreva a ocasião especial da compra..."  /* Placeholder do campo*/
-                                rows={2}
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    )}
-                    {/* Fim do campo específico: shoppingOccasionType */}
-                  </div>
-                )}
-                {/* Fim da subcategoria 'shopping' */}
-
-                {/* Início da subcategoria 'transportation' */}
-                {routineCategory === "transportation" && ( 
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="flex items-end space-x-2">
-
-                        {/* Início do campo específico: startPlaceId */}
-                        <FormField
-                          control={form.control}
-                          name="startPlaceId"
-                          render={({ field }) => (
-                            <FormItem className="flex-1">
-                              <FormLabel>Ponto de Partida</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Selecione o ponto de partida" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {places?.map((place: any) => (
-                                    <SelectItem key={place.id} value={place.id.toString()}>
-                                      {place.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        {/* Fim do campo específico: startPlaceId */}
-                        
-                        <AddNewButton onClick={() => setAddPlaceModalOpen(true)} label="Adicionar Novo" />
-                      </div>
-
-                      <div className="flex items-end space-x-2">
-
-                        {/* Início do campo específico: endPlaceId */}
-                        <FormField
-                          control={form.control}
-                          name="endPlaceId"
-                          render={({ field }) => (
-                            <FormItem className="flex-1">
-                              <FormLabel>Ponto de Destino</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Selecione o ponto de destino" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {places?.map((place: any) => (
-                                    <SelectItem key={place.id} value={place.id.toString()}>
-                                      {place.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        {/* Fim do campo específico: endPlaceId */}
-                        
-                        <AddNewButton onClick={() => setAddPlaceModalOpen(true)} label="Adicionar Novo" />
-                      </div>
-                    </div>
-
-                    {/* Início do campo específico: transportMode */}
-                    <FormField
-                      control={form.control}
-                      name="transportMode"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Meio de Transporte</FormLabel>  {/* Rótulo do campo*/}
-                          <Select
-                            onValueChange={field.onChange}
-                            value={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione o meio de transporte" />  {/* Placeholder do campo*/}
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="car">Carro</SelectItem>
-                              <SelectItem value="uber">Uber/Táxi</SelectItem>
-                              <SelectItem value="public-transport">Transporte Público</SelectItem>
-                              <SelectItem value="walking">A Pé</SelectItem>
-                              <SelectItem value="bicycle">Bicicleta</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />     
-                    {/* Fim do campo específico: transportMode */}
-
-                    {/* Início do campo específico: transportDescription */}
-                    <FormField
-                      control={form.control}
-                      name="transportDescription" 
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Descrição da Viagem</FormLabel>  {/* Rótulo do campo*/}
-                          <FormControl>
-                            <Textarea
-                              placeholder="Descreva a viagem (ex: Viagem para o trabalho, Volta para casa)..."  /* Placeholder do campo*/
-                              rows={2}
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    {/* Fim do campo específico: transportDescription */}
-                  </div>                  
-                )}
-                {/* Fim da subcategoria 'transportation' */}
-
-                {/* Início da subcategoria 'health' */}
-                {routineCategory === "health" && ( 
-                  <div className="space-y-4">
-                    <div className="flex items-end space-x-2">
-
-                      {/* Início do campo específico: healthTypeId */}
-                      <FormField
-                        control={form.control}
-                        name="healthTypeId"
-                        render={({ field }) => (
-                          <FormItem className="flex-1">
-                            <FormLabel>Tipo de Demanda de Saúde</FormLabel>  {/* Rótulo do campo*/}
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Selecione o tipo de demanda de saúde" />  {/* Placeholder do campo*/}
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {healthTypes?.map((type: any) => (
-                                  <SelectItem key={type.id} value={type.id.toString()}>
-                                    {type.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      {/* Fim do campo específico: healthTypeId */}
-                      
-                      <AddNewButton  // Botão para adicionar novos tipos de demanda de saúde
-                        onClick={() => setAddHealthTypeModalOpen(true)}
-                        label="Adicionar Novo"
-                      />
-                    </div>
-
-                    {/* Início do campo específico: healthDescription */}
-                    <FormField
-                      control={form.control}
-                      name="healthDescription"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Descrição da Despesa de Saúde</FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder="Descreva o gasto (ex: Consulta médica, Remédios, Exames)..."
-                              rows={2}
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                     {/* Fim do campo específico: healthDescription */}
-                  </div>
-                )}
-                {/* Fim da subcategoria 'health' */}
-
-                {/* Início da subcategoria 'family' */}
-                {routineCategory === "family" && ( 
-                  <div className="space-y-4">
-                    <div className="flex items-end space-x-2">
-
-                      {/* Início do campo específico: familyMemberId */}
-                      <FormField 
-                        control={form.control}
-                        name="familyMemberId"
-                        render={({ field }) => (
-                          <FormItem className="flex-1">
-                            <FormLabel>Membro da Família</FormLabel>  {/* Rótulo do campo*/}
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Selecione o membro da família" />  {/* Placeholder do campo*/}
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {familyMembers?.map((member: any) => (
-                                  <SelectItem key={member.id} value={member.id.toString()}>
-                                    {member.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      {/* Fim do campo específico: familyMemberId */}
-                      
-                      <AddNewButton  // Botão para adicionar novos membros da família
-                        onClick={() => setAddFamilyMemberModalOpen(true)}
-                        label="Adicionar Novo"
-                      />
-                    </div>
-
-                    {/* Início do campo específico: familyDescription */}
-                    <FormField  
-                      control={form.control}
-                      name="familyDescription"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Descrição da Despesa Familiar</FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder="Descreva o gasto (ex: Presente para o irmão, Jantar com os pais)..."
-                              rows={2}
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    {/* Fim do campo específico: familyDescription */}
-                  </div>
-                )}
-                {/* Fim da subcategoria 'family' */}
-
-                {/* Início a subcategoria 'charity' */}
-                {routineCategory === "charity" && (
-                  <div className="space-y-4">
-                    <div className="flex items-end space-x-2">
-
-                      {/* Início do campo específico: charityTypeId */}
-                      <FormField   
-                        control={form.control}
-                        name="charityTypeId"
-                        render={({ field }) => (
-                          <FormItem className="flex-1">
-                            <FormLabel>Tipo de Caridade</FormLabel>  {/* Rótulo do campo*/}
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Selecione o tipo de caridade" />  {/* Placeholder do campo*/}
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {charityTypes?.map((type: any) => (
-                                  <SelectItem key={type.id} value={type.id.toString()}>
-                                    {type.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      {/* Fim do campo específico: charityTypeId */}
-                      
-                      <AddNewButton  // Botão para adicionar novos tipos de caridade
-                        onClick={() => setAddCharityTypeModalOpen(true)}
-                        label="Adicionar Novo"
-                      />
-                    </div>
-                    
-                    {/* Início do campo específico: charityDescription */}
-                    <FormField  
-                      control={form.control}
-                      name="charityDescription"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Descrição da Despesa de Caridade</FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder="Descreva a doação (ex: Doação para orfanato, Contribuição para causa ambiental)..."
-                              rows={2}
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    {/* Fim do campo específico: charityDescription */}
-                  </div>
-                )}
-                {/* Fim da subcategoria 'charity' */}
-
-              </div>
+                    <FormItem className="flex items-center space-x-3 space-y-0">
+                      <FormControl>
+                        <RadioGroupItem value="paid" />
+                      </FormControl>
+                      <FormLabel className="font-normal">
+                        Pago
+                      </FormLabel>
+                    </FormItem>
+                  </RadioGroup>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
             )}
-            {/* Fim dos campos específicos para 'routine' */}
-                
-        
-            {/* Renderiza campos específicos para 'occasional' */}
+          />
+
+            {/* 3. Tipo de Gasto (Rotina ou Ocasião) */}
+            <FormField
+              control={form.control}
+              name="expenseType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tipo de gasto</FormLabel>
+                  <FormControl>
+                    <RadioGroup
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        form.setValue("occasionalGroupId", undefined);
+                        form.setValue("routineCategory", undefined); // Zera routineCategory aqui!
+
+                        // Zera todos os outros campos específicos de subcategorias para garantir limpeza
+                        form.setValue("fixedExpenseTypeId", undefined);
+                        form.setValue("frequency", undefined);
+                        form.setValue("supermarketId", undefined);
+                        form.setValue("restaurantId", undefined);
+                        form.setValue("occasionType", undefined);
+                        form.setValue("specialOccasionDescription", undefined);
+                        form.setValue("foodPurchaseType", undefined);
+                        form.setValue("serviceTypeId", undefined);
+                        form.setValue("serviceDescription", undefined);
+                        form.setValue("studyTypeId", undefined);
+                        form.setValue("studyDescription", undefined);
+                        form.setValue("leisureTypeId", undefined);
+                        form.setValue("leisureDescription", undefined);
+                        form.setValue("personalCareTypeId", undefined);
+                        form.setValue("personalCareDescription", undefined);
+                        form.setValue("shopId", undefined);
+                        form.setValue("shoppingPurchaseType", undefined);
+                        form.setValue("shoppingOccasionType", undefined);
+                        form.setValue("shoppingSpecialOccasionDescription", undefined);
+                        form.setValue("startPlaceId", undefined);
+                        form.setValue("endPlaceId", undefined);
+                        form.setValue("startingPoint", undefined);
+                        form.setValue("destination", undefined);
+                        form.setValue("transportMode", undefined);
+                        form.setValue("transportDescription", undefined);
+                        form.setValue("healthTypeId", undefined);
+                        form.setValue("healthDescription", undefined);
+                        form.setValue("familyMemberId", undefined);
+                        form.setValue("familyDescription", undefined);
+                        form.setValue("charityTypeId", undefined);
+                        form.setValue("charityDescription", undefined);
+                      }}
+                      value={field.value}
+                      className="grid grid-cols-2 gap-4"
+                    >
+                      <div className="flex items-center space-x-2 p-4 border rounded-lg">
+                        <RadioGroupItem value="routine" id="routine" />
+                        <label htmlFor="routine" className="flex-1 cursor-pointer">
+                          <div className="text-center">
+                            <Calendar className="mx-auto mb-2 h-6 w-6 text-primary" />
+                            <p className="font-medium">Gasto de Rotina</p>
+                            <p className="text-sm text-muted-foreground">Gastos recorrentes</p>
+                          </div>
+                        </label>
+                      </div>
+                      <div className="flex items-center space-x-2 p-4 border rounded-lg">
+                        <RadioGroupItem value="occasional" id="occasional" />
+                        <label htmlFor="occasional" className="flex-1 cursor-pointer">
+                          <div className="text-center">
+                            <Star className="mx-auto mb-2 h-6 w-6 text-accent" />
+                            <p className="font-medium">Gasto de Ocasião</p>
+                            <p className="text-sm text-muted-foreground">Gastos de situações especiais</p>
+                          </div>
+                        </label>
+                      </div>
+                    </RadioGroup>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* 4. Seleção de Grupo Ocasionais (APARECE ANTES DA ROTINA se expenseType for "occasional") */}
             {expenseType === "occasional" && (
               <FormField
                 control={form.control}
                 name="occasionalGroupId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Grupos Abertos de Gastos Ocasionais</FormLabel>
-                    <div className="flex items-end space-x-2"> 
-                      <Select onValueChange={field.onChange} value={field.value}>
+                    <FormLabel>Grupo de Gastos Ocasionais</FormLabel>
+                    <div className="flex items-end space-x-2">
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value || ""}
+                        disabled={occasionalGroupsLoading}
+                      >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Selecione um grupo" />
+                            <SelectValue placeholder={occasionalGroupsLoading ? "Carregando..." : "Selecione um grupo"} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {occasionalGroups?.map((group) => (<SelectItem key={group.id} value={group.id.toString()}>{group.name}
-                          </SelectItem>))}
+                          {occasionalGroups.length === 0 && !occasionalGroupsLoading ? (
+                            <SelectItem value="no-groups" disabled>Nenhum grupo disponível</SelectItem>
+                          ) : (
+                            occasionalGroups.map((group) => (
+                              <SelectItem key={group.id} value={group.id.toString()}>{group.name}</SelectItem>
+                            ))
+                          )}
                         </SelectContent>
                       </Select>
-                      <AddNewButton // Botão para adicionar novos grupos
+                      <AddNewButton
                         onClick={() => setAddOccasionalGroupModalOpen(true)}
                         label="Adicionar Novo"
+                        isLoading={occasionalGroupsLoading}
                       />
                     </div>
                     <FormMessage />
@@ -1443,9 +788,725 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
                 )}
               />
             )}
-            {/* Fim dos campos específicos para 'occasional' */}
 
-            
+            {/* 5. Categorias de Gastos */}
+            <FormField
+              control={form.control}
+              name="routineCategory"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Categorias de Gastos</FormLabel>
+                  <Select
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      // Ao mudar a rotineCategory, zera os outros campos de rotina (filhos)
+                      form.setValue("fixedExpenseTypeId", undefined);
+                      form.setValue("frequency", undefined);
+                      form.setValue("supermarketId", undefined);
+                      form.setValue("restaurantId", undefined);
+                      form.setValue("occasionType", undefined);
+                      form.setValue("specialOccasionDescription", undefined);
+                      form.setValue("foodPurchaseType", undefined);
+                      form.setValue("serviceTypeId", undefined);
+                      form.setValue("serviceDescription", undefined);
+                      form.setValue("studyTypeId", undefined);
+                      form.setValue("studyDescription", undefined);
+                      form.setValue("leisureTypeId", undefined);
+                      form.setValue("leisureDescription", undefined);
+                      form.setValue("personalCareTypeId", undefined);
+                      form.setValue("personalCareDescription", undefined);
+                      form.setValue("shopId", undefined);
+                      form.setValue("shoppingPurchaseType", undefined);
+                      form.setValue("shoppingOccasionType", undefined);
+                      form.setValue("shoppingSpecialOccasionDescription", undefined);
+                      form.setValue("startPlaceId", undefined);
+                      form.setValue("endPlaceId", undefined);
+                      form.setValue("startingPoint", undefined);
+                      form.setValue("destination", undefined);
+                      form.setValue("transportMode", undefined);
+                      form.setValue("transportDescription", undefined);
+                      form.setValue("healthTypeId", undefined);
+                      form.setValue("healthDescription", undefined);
+                      form.setValue("familyMemberId", undefined);
+                      form.setValue("familyDescription", undefined);
+                      form.setValue("charityTypeId", undefined);
+                      form.setValue("charityDescription", undefined);
+                    }}
+                    value={field.value || ""}>
+                    <FormControl>
+                      <SelectTrigger><SelectValue placeholder="Selecione a categoria" /></SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="fixed">Fixos</SelectItem>
+                      <SelectItem value="supermarket">Supermercado</SelectItem>
+                      <SelectItem value="food">Alimentação</SelectItem>
+                      <SelectItem value="services">Serviços</SelectItem>
+                      <SelectItem value="study">Estudos</SelectItem>
+                      <SelectItem value="leisure">Lazer</SelectItem>
+                      <SelectItem value="personal-care">Cuidado Pessoal</SelectItem>
+                      <SelectItem value="shopping">Compras</SelectItem>
+                      <SelectItem value="transportation">Transporte</SelectItem>
+                      <SelectItem value="health">Saúde</SelectItem>
+                      <SelectItem value="family">Família</SelectItem>
+                      <SelectItem value="charity">Caridade</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* CAMPOS ESPECÍFICOS DE SUBCATEGORIAS */}
+
+            <div className="space-y-6">
+              {routineCategory === "fixed" && (
+                <div className="space-y-4">
+                  <div className="flex items-end space-x-2">
+                    <FormField
+                      control={form.control}
+                      name="fixedExpenseTypeId"
+                      render={({ field }) => (
+                        <FormItem className="flex-1">
+                          <FormLabel>Tipo de despesa fixa</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value || ""}
+                            disabled={fixedTypesLoading}
+                          >
+                            <FormControl><SelectTrigger><SelectValue placeholder={fixedTypesLoading ? "Carregando..." : "Selecione o tipo de despesa fixa"} /></SelectTrigger></FormControl>
+                            <SelectContent>
+                              {fixedExpenseTypes.length === 0 && !fixedTypesLoading ? (
+                                <SelectItem value="no-items" disabled>Nenhum tipo disponível</SelectItem>
+                              ) : (
+                                fixedExpenseTypes.map((type) => (<SelectItem key={type.id} value={type.id.toString()}>{type.name}</SelectItem>))
+                              )}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <AddNewButton onClick={() => setShowAddFixedExpenseTypeModal(true)} label="Adicionar Novo" isLoading={fixedTypesLoading} />
+                  </div>
+                  <FormField
+                    control={form.control}
+                    name="frequency"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Frequência</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || ""}>
+                          <FormControl><SelectTrigger><SelectValue placeholder="Selecione a frequência desse gasto" /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            <SelectItem value="weekly">Semanalmente</SelectItem>
+                            <SelectItem value="monthly">Mensalmente</SelectItem>
+                            <SelectItem value="semi-annually">Semestralmente</SelectItem>
+                            <SelectItem value="annually">Anualmente</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
+              {routineCategory === "supermarket" && (
+                <div className="flex items-end space-x-2">
+                  <FormField
+                    control={form.control}
+                    name="supermarketId"
+                    render={({ field }) => (
+                      <FormItem className="flex-1">
+                        <FormLabel>Supermercado</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value || ""}
+                          disabled={supermarketsLoading}
+                        >
+                          <FormControl><SelectTrigger><SelectValue placeholder={supermarketsLoading ? "Carregando..." : "Selecione o supermercado"} /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            {supermarkets.length === 0 && !supermarketsLoading ? (
+                              <SelectItem value="no-items" disabled>Nenhum supermercado disponível</SelectItem>
+                            ) : (
+                              supermarkets.map((supermarket) => (<SelectItem key={supermarket.id} value={supermarket.id.toString()}>{supermarket.name}</SelectItem>))
+                            )}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <AddNewButton onClick={() => setShowAddSupermarketModal(true)} label="Adicionar Novo" isLoading={supermarketsLoading} />
+                </div>
+              )}
+              {routineCategory === "food" && (
+                <div className="space-y-4">
+                  <div className="flex items-end space-x-2">
+                    <FormField control={form.control} name="restaurantId" render={({ field }) => (
+                      <FormItem className="flex-1">
+                        <FormLabel>Restaurante</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value || ""}
+                          disabled={restaurantsLoading}
+                        >
+                          <FormControl><SelectTrigger><SelectValue placeholder={restaurantsLoading ? "Carregando..." : "Selecione o restaurante"} /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            {restaurants.length === 0 && !restaurantsLoading ? (
+                              <SelectItem value="no-items" disabled>Nenhum restaurante disponível</SelectItem>
+                            ) : (
+                              restaurants.map((restaurant) => (<SelectItem key={restaurant.id} value={restaurant.id.toString()}>{restaurant.name}</SelectItem>))
+                            )}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <AddNewButton onClick={() => setShowAddRestaurantModal(true)} label="Adicionar Novo" />
+                  </div>
+                  <FormField control={form.control} name="foodPurchaseType" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Forma de Pedido</FormLabel>
+                      <FormControl>
+                        <RadioGroup onValueChange={field.onChange} value={field.value || ""} className="flex space-x-4">
+                          <div className="flex items-center space-x-2"><RadioGroupItem value="in-person" id="food-in-person" /><label htmlFor="food-in-person">No local</label></div>
+                          <div className="flex items-center space-x-2"><RadioGroupItem value="online" id="food-online" /><label htmlFor="food-online">À distância</label></div>
+                        </RadioGroup>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="occasionType" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Ocasião</FormLabel>
+                      <FormControl>
+                        <RadioGroup onValueChange={field.onChange} value={field.value || ""} className="flex space-x-4">
+                          <div className="flex items-center space-x-2"><RadioGroupItem value="normal" id="occasion-normal" /><label htmlFor="occasion-normal">Normal</label></div>
+                          <div className="flex items-center space-x-2"><RadioGroupItem value="special" id="occasion-special" /><label htmlFor="occasion-special">Especial</label></div>
+                        </RadioGroup>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  {watchedValues.occasionType === "special" && (
+                    <FormField control={form.control} name="specialOccasionDescription" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Descrição da Ocasião Especial</FormLabel>
+                        <FormControl><Textarea placeholder="ex: aniversário de alguém, celebração de algo..." rows={2} {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                  )}
+                </div>
+              )}
+              {routineCategory === "services" && (
+                <div className="space-y-4">
+                  <div className="flex items-end space-x-2">
+                    <FormField
+                      control={form.control}
+                      name="serviceTypeId"
+                      render={({ field }) => (
+                        <FormItem className="flex-1">
+                          <FormLabel>Tipo de Serviço</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value || ""}
+                            disabled={serviceTypesLoading}
+                          >
+                            <FormControl><SelectTrigger><SelectValue placeholder={serviceTypesLoading ? "Carregando..." : "Selecione o tipo de serviço"} /></SelectTrigger></FormControl>
+                            <SelectContent>
+                              {serviceTypes.length === 0 && !serviceTypesLoading ? (
+                                <SelectItem value="no-items" disabled>Nenhum tipo disponível</SelectItem>
+                              ) : (
+                                serviceTypes.map((type) => (<SelectItem key={type.id} value={type.id.toString()}>{type.name}</SelectItem>))
+                              )}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <AddNewButton onClick={() => setAddServiceTypeModalOpen(true)} label="Adicionar Novo" />
+                  </div>
+                  <FormField
+                    control={form.control}
+                    name="serviceDescription"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Descrição do Serviço</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Descreva o serviço (ex: troca de óleo, limpeza da casa)..."
+                            rows={2}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
+              {routineCategory === "study" && ( 
+            <div className="space-y-4">
+              <div className="flex items-end space-x-2">
+                <FormField
+                  control={form.control}
+                  name="studyTypeId"
+                  render={({ field }) => (
+                    <FormItem className="flex-1">
+                      <FormLabel>Tipo de Estudo</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value || ""}
+                        disabled={studyTypesLoading}
+                      >
+                        <FormControl><SelectTrigger><SelectValue placeholder={studyTypesLoading ? "Carregando..." : "Selecione o tipo de estudo"} /></SelectTrigger></FormControl>
+                        <SelectContent>
+                          {studyTypes.length === 0 && !studyTypesLoading ? (
+                            <SelectItem value="no-items" disabled>Nenhum tipo disponível</SelectItem>
+                          ) : (
+                            studyTypes.map((type) => (<SelectItem key={type.id} value={type.id.toString()}>{type.name}</SelectItem>))
+                          )}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <AddNewButton onClick={() => setAddStudyTypeModalOpen(true)} label="Adicionar Novo" />
+              </div>
+              <FormField
+                control={form.control}
+                name="studyDescription"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Descrição do Estudo</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Descreva o gasto (ex: mensalidade faculdade, material didático, curso online)..."
+                        rows={2}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          )}
+              {routineCategory === "leisure" && (
+                <div className="space-y-4">
+                  <div className="flex items-end space-x-2">
+                    <FormField
+                      control={form.control}
+                      name="leisureTypeId"
+                      render={({ field }) => (
+                        <FormItem className="flex-1">
+                          <FormLabel>Tipo de Lazer</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value || ""}
+                            disabled={leisureTypesLoading}
+                          >
+                            <FormControl><SelectTrigger><SelectValue placeholder={leisureTypesLoading ? "Carregando..." : "Selecione o tipo de lazer"} /></SelectTrigger></FormControl>
+                            <SelectContent>
+                              {leisureTypes.length === 0 && !leisureTypesLoading ? (
+                                <SelectItem value="no-items" disabled>Nenhum tipo disponível</SelectItem>
+                              ) : (
+                                leisureTypes.map((type) => (<SelectItem key={type.id} value={type.id.toString()}>{type.name}</SelectItem>))
+                              )}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <AddNewButton onClick={() => setAddLeisureTypeModalOpen(true)} label="Adicionar Novo" />
+                  </div>
+                  <FormField
+                    control={form.control}
+                    name="leisureDescription"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Descrição do Lazer</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Descreva a atividade de lazer (ex: cinema, rolê com amigos)..."
+                            rows={2}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
+              {routineCategory === "personal-care" && (
+                <div className="space-y-4">
+                  <div className="flex items-end space-x-2">
+                    <FormField
+                      control={form.control}
+                      name="personalCareTypeId"
+                      render={({ field }) => (
+                        <FormItem className="flex-1">
+                          <FormLabel>Tipo de Cuidado Pessoal</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value || ""}
+                            disabled={personalCareTypesLoading}
+                          >
+                            <FormControl><SelectTrigger><SelectValue placeholder={personalCareTypesLoading ? "Carregando..." : "Selecione o tipo de cuidado pessoal"} /></SelectTrigger></FormControl>
+                            <SelectContent>
+                              {personalCareTypes.length === 0 && !personalCareTypesLoading ? (
+                                <SelectItem value="no-items" disabled>Nenhum tipo disponível</SelectItem>
+                              ) : (
+                                personalCareTypes.map((type) => (<SelectItem key={type.id} value={type.id.toString()}>{type.name}</SelectItem>))
+                              )}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <AddNewButton onClick={() => setAddPersonalCareTypeModalOpen(true)} label="Adicionar Novo" />
+                  </div>
+                  <FormField
+                    control={form.control}
+                    name="personalCareDescription"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Descrição do Cuidado Pessoal</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Descreva o gasto (ex: salão de beleza, produtos de cabelo)..."
+                            rows={2}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
+              {routineCategory === "shopping" && (
+                <div className="space-y-4">
+                  <div className="flex items-end space-x-2">
+                    <FormField
+                      control={form.control}
+                      name="shopId"
+                      render={({ field }) => (
+                        <FormItem className="flex-1">
+                          <FormLabel>Loja</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value || ""}
+                            disabled={shopsLoading}
+                          >
+                            <FormControl><SelectTrigger><SelectValue placeholder={shopsLoading ? "Carregando..." : "Selecione a loja"} /></SelectTrigger></FormControl>
+                            <SelectContent>
+                              {shops.length === 0 && !shopsLoading ? (
+                                <SelectItem value="no-items" disabled>Nenhuma loja disponível</SelectItem>
+                              ) : (
+                                shops.map((shop) => (<SelectItem key={shop.id} value={shop.id.toString()}>{shop.name}</SelectItem>))
+                              )}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <AddNewButton onClick={() => setAddShopModalOpen(true)} label="Adicionar Novo" />
+                  </div>
+                  <FormField
+                    control={form.control}
+                    name="shoppingPurchaseType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Tipo de Compra</FormLabel>
+                        <FormControl>
+                          <RadioGroup onValueChange={field.onChange} value={field.value || ""} className="flex space-x-4">
+                            <div className="flex items-center space-x-2"><RadioGroupItem value="in-person" id="shopping-in-person" /><label htmlFor="shopping-in-person">Presencial</label></div>
+                            <div className="flex items-center space-x-2"><RadioGroupItem value="online" id="shopping-online" /><label htmlFor="shopping-online">Online</label></div>
+                          </RadioGroup>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="shoppingOccasionType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Ocasião da Compra</FormLabel>
+                        <FormControl>
+                          <RadioGroup onValueChange={field.onChange} value={field.value || ""} className="flex space-x-4">
+                            <div className="flex items-center space-x-2"><RadioGroupItem value="normal" id="shopping-occasion-normal" /><label htmlFor="shopping-occasion-normal">Normal</label></div>
+                            <div className="flex items-center space-x-2"><RadioGroupItem value="special" id="shopping-occasion-special" /><label htmlFor="shopping-occasion-special">Especial</label></div>
+                          </RadioGroup>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  {watchedValues.shoppingOccasionType === "special" && (
+                    <FormField control={form.control} name="shoppingSpecialOccasionDescription" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Descrição da Ocasião Especial</FormLabel>
+                        <FormControl><Textarea placeholder="ex: presente para alguém..." rows={2} {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                  )}
+                </div>
+              )}
+              {routineCategory === "transportation" && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-end space-x-2">
+                      <FormField
+                        control={form.control}
+                        name="startPlaceId"
+                        render={({ field }) => (
+                          <FormItem className="flex-1">
+                            <FormLabel>Ponto de Partida</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value || ""}
+                              disabled={placesLoading}
+                            >
+                              <FormControl><SelectTrigger><SelectValue placeholder={placesLoading ? "Carregando..." : "Selecione o ponto de partida"} /></SelectTrigger></FormControl>
+                              <SelectContent>
+                                {places.length === 0 && !placesLoading ? (
+                                  <SelectItem value="no-items" disabled>Nenhum lugar disponível</SelectItem>
+                                ) : (
+                                  places.map((place) => (<SelectItem key={place.id} value={place.id.toString()}>{place.name}</SelectItem>))
+                                )}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <AddNewButton onClick={() => setAddPlaceModalOpen(true)} label="Adicionar Novo" />
+                    </div>
+                    <div className="flex items-end space-x-2">
+                      <FormField
+                        control={form.control}
+                        name="endPlaceId"
+                        render={({ field }) => (
+                          <FormItem className="flex-1">
+                            <FormLabel>Ponto de Destino</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value || ""}
+                              disabled={placesLoading}
+                            >
+                              <FormControl><SelectTrigger><SelectValue placeholder={placesLoading ? "Carregando..." : "Selecione o ponto de destino"} /></SelectTrigger></FormControl>
+                              <SelectContent>
+                                {places.length === 0 && !placesLoading ? (
+                                  <SelectItem value="no-items" disabled>Nenhum lugar disponível</SelectItem>
+                                ) : (
+                                  places.map((place) => (<SelectItem key={place.id} value={place.id.toString()}>{place.name}</SelectItem>))
+                                )}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <AddNewButton onClick={() => setAddPlaceModalOpen(true)} label="Adicionar Novo" />
+                    </div>
+                  </div>
+                  <FormField
+                    control={form.control}
+                    name="transportMode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Meio de Transporte</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || ""}>
+                          <FormControl><SelectTrigger><SelectValue placeholder="Selecione o meio de transporte" /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            <SelectItem value="car">Carro</SelectItem>
+                            <SelectItem value="uber">Uber</SelectItem>
+                            <SelectItem value="bus">Ônibus</SelectItem>
+                            <SelectItem value="plane">Avião</SelectItem>
+                            <SelectItem value="subway">Metrô</SelectItem>
+                            <SelectItem value="another">Outro</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="transportDescription"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Descrição da Viagem</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Descreva a viagem (ex: viagem para o trabalho, volta para casa)..."
+                            rows={2}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
+              {routineCategory === "health" && (
+                <div className="space-y-4">
+                  <div className="flex items-end space-x-2">
+                    <FormField
+                      control={form.control}
+                      name="healthTypeId"
+                      render={({ field }) => (
+                        <FormItem className="flex-1">
+                          <FormLabel>Tipo de Demanda de Saúde</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value || ""}
+                            disabled={healthTypesLoading}
+                          >
+                            <FormControl><SelectTrigger><SelectValue placeholder={healthTypesLoading ? "Carregando..." : "Selecione o tipo de demanda de saúde"} /></SelectTrigger></FormControl>
+                            <SelectContent>
+                              {healthTypes.length === 0 && !healthTypesLoading ? (
+                                <SelectItem value="no-items" disabled>Nenhum tipo disponível</SelectItem>
+                              ) : (
+                                healthTypes.map((type) => (<SelectItem key={type.id} value={type.id.toString()}>{type.name}</SelectItem>))
+                              )}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <AddNewButton onClick={() => setAddHealthTypeModalOpen(true)} label="Adicionar Novo" />
+                  </div>
+                  <FormField
+                    control={form.control}
+                    name="healthDescription"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Descrição da Despesa de Saúde</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Descreva o gasto (ex: consulta médica, remédios, exames)..."
+                            rows={2}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
+              {routineCategory === "family" && (
+                <div className="space-y-4">
+                  <div className="flex items-end space-x-2">
+                    <FormField
+                      control={form.control}
+                      name="familyMemberId"
+                      render={({ field }) => (
+                        <FormItem className="flex-1">
+                          <FormLabel>Membro da Família</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value || ""}
+                            disabled={familyMembersLoading}
+                          >
+                            <FormControl><SelectTrigger><SelectValue placeholder={familyMembersLoading ? "Carregando..." : "Selecione o membro da família"} /></SelectTrigger></FormControl>
+                            <SelectContent>
+                              {familyMembers.length === 0 && !familyMembersLoading ? (
+                                <SelectItem value="no-items" disabled>Nenhum membro disponível</SelectItem>
+                              ) : (
+                                familyMembers.map((member) => (<SelectItem key={member.id} value={member.id.toString()}>{member.name}</SelectItem>))
+                              )}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <AddNewButton onClick={() => setAddFamilyMemberModalOpen(true)} label="Adicionar Novo" />
+                  </div>
+                  <FormField
+                    control={form.control}
+                    name="familyDescription"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Descrição da Despesa Familiar</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Descreva o gasto (ex: presente para o irmão, consertar algo em casa)..."
+                            rows={2}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
+              {routineCategory === "charity" && (
+                <div className="space-y-4">
+                  <div className="flex items-end space-x-2">
+                    <FormField
+                      control={form.control}
+                      name="charityTypeId"
+                      render={({ field }) => (
+                        <FormItem className="flex-1">
+                          <FormLabel>Tipo de Caridade</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value || ""}
+                            disabled={charityTypesLoading}
+                          >
+                            <FormControl><SelectTrigger><SelectValue placeholder={charityTypesLoading ? "Carregando..." : "Selecione o tipo de caridade"} /></SelectTrigger></FormControl>
+                            <SelectContent>
+                              {charityTypes.length === 0 && !charityTypesLoading ? (
+                                <SelectItem value="no-items" disabled>Nenhum tipo disponível</SelectItem>
+                              ) : (
+                                charityTypes.map((type) => (<SelectItem key={type.id} value={type.id.toString()}>{type.name}</SelectItem>))
+                              )}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <AddNewButton onClick={() => setAddCharityTypeModalOpen(true)} label="Adicionar Novo" />
+                  </div>
+                  <FormField
+                    control={form.control}
+                    name="charityDescription"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Descrição da Despesa de Caridade</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Descreva a doação (ex: doação para orfanato, ajuda em situação de catástrofe)..."
+                            rows={2}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
+            </div>
+
+
             {/* Ações do formulário: Botões "Cancelar" e "Salvar" */}
             <div className="flex justify-end space-x-4 pt-6 border-t">
               <Button
@@ -1455,67 +1516,70 @@ export function AddExpenseModal({ open, onOpenChange }: AddExpenseModalProps) {
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={createExpenseMutation.isPending}>
-                {createExpenseMutation.isPending ? "Salvando..." : "Salvar Gasto"}
+              <Button type="submit" disabled={createExpenseMutation.isPending || updateExpenseMutation.isPending}>
+                {createExpenseMutation.isPending ? "Salvando..." : (updateExpenseMutation.isPending ? "Atualizando..." : (expenseToEdit ? "Atualizar Gasto" : "Salvar Gasto"))}
               </Button>
             </div>
+
           </form>
-        </Form>  {/* Fim do formulário de adição de despesa*/}
-        
+        </Form>
+
       </DialogContent>
-      
+
       {/* LOCALIZAÇÃO DOS MODAIS ADICIONAIS: Renderizados aqui, fora do <form> mas dentro do <Dialog> */}
 
-      <AddOccasionalGroupModal  // Renderiza o modal de grupo de despesas ocasionais
+      <AddOccasionalGroupModal
         open={addOccasionalGroupModalOpen}
         onOpenChange={setAddOccasionalGroupModalOpen}
-      />      
-      <AddFixedExpenseTypeModal  // Renderiza o modal de tipo de despesa fixa
+      />
+      <AddFixedExpenseTypeModal
         open={showAddFixedExpenseTypeModal}
         onOpenChange={setShowAddFixedExpenseTypeModal}
       />
-      <AddSupermarketModal  // Renderiza o modal de supermercado
+      <AddSupermarketModal
         open={showAddSupermarketModal}
         onOpenChange={setShowAddSupermarketModal}
       />
-      <AddRestaurantModal  // Renderiza o modal de restaurante
+      <AddRestaurantModal
         open={showAddRestaurantModal}
         onOpenChange={setShowAddRestaurantModal}
       />
-      <AddServiceTypeModal  // Renderiza o modal de tipo de serviço
+      <AddServiceTypeModal
         open={addServiceTypeModalOpen}
         onOpenChange={setAddServiceTypeModalOpen}
       />
-      <AddLeisureTypeModal  // Renderiza o modal de tipo de lazer
+      <AddStudyTypeModal 
+      open={addStudyTypeModalOpen}
+      onOpenChange={setAddStudyTypeModalOpen}
+      />
+      <AddLeisureTypeModal
         open={addLeisureTypeModalOpen}
         onOpenChange={setAddLeisureTypeModalOpen}
       />
-      <AddPersonalCareTypeModal  // Renderiza o modal de tipo de cuidado pessoal
+      <AddPersonalCareTypeModal
         open={addPersonalCareTypeModalOpen}
         onOpenChange={setAddPersonalCareTypeModalOpen}
       />
-      <AddShopModal  // Renderiza o modal de loja
+      <AddShopModal
         open={addShopModalOpen}
         onOpenChange={setAddShopModalOpen}
       />
-      <AddPlaceModal  // Renderiza o modal de lugar
+      <AddPlaceModal
         open={addPlaceModalOpen}
         onOpenChange={setAddPlaceModalOpen}
       />
-      <AddHealthTypeModal  // Renderiza o modal de tipo de saúde
+      <AddHealthTypeModal
         open={addHealthTypeModalOpen}
         onOpenChange={setAddHealthTypeModalOpen}
       />
-      <AddFamilyMemberModal  // Renderiza o modal de membro da família
+      <AddFamilyMemberModal
         open={addFamilyMemberModalOpen}
         onOpenChange={setAddFamilyMemberModalOpen}
       />
-      <AddCharityTypeModal  // Renderiza o modal de tipo de caridade
+      <AddCharityTypeModal
         open={addCharityTypeModalOpen}
         onOpenChange={setAddCharityTypeModalOpen}
       />
-    {/* Fim do modal de adição de despesa*/}
-      
-    </Dialog> 
+    </Dialog>
   );
 };

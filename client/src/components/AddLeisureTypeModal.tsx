@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription, 
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -53,7 +54,7 @@ export function AddLeisureTypeModal({ open, onOpenChange }: Props) {
   const mutation = useMutation({
     mutationFn: (data: FormData) => apiRequest("POST", "/api/leisure-types", data),
     onSuccess: () => {
-      toast({ title: "SuccessO", description: "Tipo de lazer adicionado!" });
+      toast({ title: "Sucesso", description: "Tipo de lazer adicionado!" });
       queryClient.invalidateQueries({ queryKey: ["/api/leisure-types"] });
       onOpenChange(false);
       form.reset();
@@ -74,6 +75,9 @@ export function AddLeisureTypeModal({ open, onOpenChange }: Props) {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Adicionar tipo de lazer</DialogTitle>
+          <DialogDescription>
+            Insira o nome do novo tipo de lazer (ex: cinema, viagem, etc.).
+          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>

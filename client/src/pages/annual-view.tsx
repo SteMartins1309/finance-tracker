@@ -1,235 +1,275 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+// src/components/AnnualView.tsx
+import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Edit, Trash2, ChevronDown, ArrowLeft, TrendingUp, TrendingDown } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
-import { 
-  ShoppingCart,
-  Utensils,
-  Car,
-  Tags,
-  Heart,
-  Home,
-  Gamepad2,
-  Scissors,
-  Users,
-  Gift,
-  BarChart3
-} from "lucide-react";
+import AddFinancialYearModal from "@/components/AddFinancialYearModal";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import MonthlyGoalsDisplay from "@/components/MonthlyGoalsDisplay";
+
+// NOVO: Tipo para as estatísticas anuais
+interface AnnualStats {
+  total: number;
+  avgMonthly: number;
+  topCategory: string;
+  categoryTotals: { [key: string]: number };
+}
+
+interface FinancialYearData {
+  id: number;
+  year: number;
+  totalMonthlyGoal: number;
+  createdAt: string;
+  monthlyGoals?: { category: string; amount: number }[];
+}
 
 export default function AnnualView() {
-  const currentDate = new Date();
-  const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const { data: annualStats, isLoading: statsLoading } = useQuery({
-    queryKey: ["/api/stats/annual", selectedYear],
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingYear, setEditingYear] = useState<FinancialYearData | null>(null);
+  const [deletingYear, setDeletingYear] = useState<FinancialYearData | null>(null);
+
+  const [selectedYearId, setSelectedYearId] = useState<number | null>(() => {
+    const savedYearId = localStorage.getItem('selectedFinancialYearId');
+    return savedYearId ? parseInt(savedYearId, 10) : null;
   });
 
-  const { data: categoryBreakdown, isLoading: breakdownLoading } = useQuery({
-    queryKey: ["/api/stats/category-breakdown", selectedYear],
+  const { data: financialYears, isLoading } = useQuery<FinancialYearData[]>({
+    queryKey: ["/api/financial-years"],
   });
 
-  const getCategoryIcon = (category: string) => {
-    const iconMap: { [key: string]: JSX.Element } = {
-      supermarket: <ShoppingCart className="h-4 w-4 text-primary" />,
-      food: <Utensils className="h-4 w-4 text-secondary" />,
-      transportation: <Car className="h-4 w-4 text-accent" />,
-      health: <Heart className="h-4 w-4 text-red-500" />,
-      services: <Home className="h-4 w-4 text-blue-500" />,
-      leisure: <Gamepad2 className="h-4 w-4 text-purple-500" />,
-      "personal-care": <Scissors className="h-4 w-4 text-pink-500" />,
-      shopping: <Tags className="h-4 w-4 text-indigo-500" />,
-      family: <Users className="h-4 w-4 text-green-500" />,
-      charity: <Gift className="h-4 w-4 text-yellow-500" />,
-    };
-    return iconMap[category] || <Tags className="h-4 w-4 text-gray-500" />;
+  // NOVO: Query para buscar estatísticas anuais, que agora só consideram gastos PAGOS
+  const { data: annualStats, isLoading: isAnnualStatsLoading } = useQuery<AnnualStats>({
+    queryKey: ['/api/stats/annual', selectedYearId],
+    queryFn: async ({ queryKey }) => {
+      const [_key, yearId] = queryKey;
+      // Se não houver ano selecionado, não faz a requisição
+      if (!yearId) return { total: 0, avgMonthly: 0, topCategory: 'none', categoryTotals: {} };
+      
+      const year = financialYears?.find(y => y.id === yearId)?.year;
+      if (!year) throw new Error("Ano financeiro não encontrado.");
+
+      const response = await apiRequest("GET", `/api/stats/annual/${year}`);
+      return response;
+    },
+    enabled: !!selectedYearId && !isLoading, // Habilita a query apenas se um ano estiver selecionado e a lista de anos já tiver sido carregada
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => await apiRequest("DELETE", `/api/financial-years/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/financial-years"] });
+      toast({ title: "Ano excluído com sucesso." });
+      if (deletingYear && deletingYear.id === selectedYearId) {
+        setSelectedYearId(null);
+      }
+    },
+    onError: () => toast({ title: "Erro ao excluir ano.", variant: "destructive" }),
+    onSettled: () => setDeletingYear(null),
+  });
+
+  useEffect(() => {
+    if (selectedYearId !== null) {
+      localStorage.setItem('selectedFinancialYearId', String(selectedYearId));
+    } else {
+      localStorage.removeItem('selectedFinancialYearId');
+    }
+  }, [selectedYearId]);
+
+  const handleSelectYearForDetails = (yearId: number) => {
+    setSelectedYearId(yearId);
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount || 0);
+  const handleGoBackFromDetails = () => {
+    setSelectedYearId(null);
   };
 
-  const years = Array.from({ length: 5 }, (_, i) => currentDate.getFullYear() - i);
+  // Funções auxiliares para renderizar o JSX dos detalhes do ano
+  const renderAnnualDetails = () => {
+    if (!selectedYearId) return null;
+    
+    // Filtra o ano selecionado da lista completa
+    const selectedYearData = financialYears?.find(y => y.id === selectedYearId);
+    
+    if (!selectedYearData) {
+        return <p className="text-center text-text-secondary mt-8">Ano financeiro não encontrado.</p>;
+    }
+    
+    // Usa os dados da nova query de estatísticas anuais
+    const isDetailsLoading = isAnnualStatsLoading || isLoading;
+    const yearName = selectedYearData.year;
+    
+    return (
+      <div className="mt-8 space-y-6">
+        <h3 className="text-2xl font-bold text-text-primary">{`Estatísticas de ${yearName}`}</h3>
+        
+        {isDetailsLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-24 w-full" />)}
+            </div>
+        ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Total Anual */}
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardTitle className="text-sm font-medium">Total Anual Gasto</CardTitle>
+                        <TrendingDown className="h-4 w-4 text-red-500" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{formatCurrency(annualStats?.total || 0)}</div>
+                        <p className="text-xs text-muted-foreground">Considerando apenas gastos pagos.</p>
+                    </CardContent>
+                </Card>
+                {/* Média Mensal */}
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardTitle className="text-sm font-medium">Média/mês</CardTitle>
+                        <TrendingUp className="h-4 w-4 text-green-500" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{formatCurrency(annualStats?.avgMonthly || 0)}</div>
+                        <p className="text-xs text-muted-foreground">Média com base nos 12 meses do ano.</p>
+                    </CardContent>
+                </Card>
+                {/* Categoria mais Gasta */}
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardTitle className="text-sm font-medium">Categoria Top</CardTitle>
+                        <ChevronDown className="h-4 w-4 text-gray-500" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold capitalize">{annualStats?.topCategory || 'N/A'}</div>
+                        <p className="text-xs text-muted-foreground">Sua maior despesa anual.</p>
+                    </CardContent>
+                </Card>
+            </div>
+        )}
+        
+        {/* Detalhes de Metas Mensais */}
+        <MonthlyGoalsDisplay yearId={selectedYearId} onGoBack={handleGoBackFromDetails} />
+        
+      </div>
+    );
+  };
 
   return (
     <div className="p-8">
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex justify-between items-center mb-6">
         <div>
-          <h2 className="text-3xl font-bold text-text-primary">Annual Statistics</h2>
-          <p className="text-text-secondary mt-1">Yearly overview with monthly trends</p>
+          <h2 className="text-3xl font-bold text-text-primary">Estatísticas Anuais</h2>
+          <p className="text-sm text-text-secondary">Gerencie seus anos financeiros e metas mensais.</p>
         </div>
-        <div className="flex items-center space-x-4">
-          <Select 
-            value={selectedYear.toString()} 
-            onValueChange={(value) => setSelectedYear(parseInt(value))}
+        <Button onClick={() => { setEditingYear(null); setModalOpen(true); }}>+ Novo Ano</Button>
+      </div>
+
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-40 w-full" />)}
+        </div>
+      ) : (
+        <>
+          {/* Acordeão principal para os cards de anos */}
+          <Accordion
+            type="single"
+            collapsible
+            className="w-full border rounded-lg shadow-sm bg-card"
+            value={selectedYearId ? undefined : "years-list"}
+            onValueChange={(value) => {
+              if (!value && selectedYearId) {
+                return;
+              }
+              if (value === "years-list") {
+                setSelectedYearId(null);
+              }
+            }}
           >
-            <SelectTrigger className="w-24">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {years.map((year) => (
-                <SelectItem key={year} value={year.toString()}>
-                  {year}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {/* Annual Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <Card>
-          <CardContent className="p-6">
-            <h3 className="text-lg font-semibold text-text-primary mb-4">Total Expenses</h3>
-            {statsLoading ? (
-              <Skeleton className="h-10 w-32 mb-2" />
-            ) : (
-              <p className="text-3xl font-bold text-text-primary">
-                {formatCurrency(annualStats?.total || 0)}
-              </p>
-            )}
-            <p className="text-sm text-green-600 mt-2">Year-to-date spending</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <h3 className="text-lg font-semibold text-text-primary mb-4">Avg Monthly</h3>
-            {statsLoading ? (
-              <Skeleton className="h-10 w-32 mb-2" />
-            ) : (
-              <p className="text-3xl font-bold text-text-primary">
-                {formatCurrency(annualStats?.avgMonthly || 0)}
-              </p>
-            )}
-            <p className="text-sm text-blue-600 mt-2">Average per month</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <h3 className="text-lg font-semibold text-text-primary mb-4">Top Category</h3>
-            {statsLoading ? (
-              <Skeleton className="h-10 w-32 mb-2" />
-            ) : (
-              <p className="text-3xl font-bold text-text-primary capitalize">
-                {annualStats?.topCategory?.replace('-', ' ') || 'None'}
-              </p>
-            )}
-            <p className="text-sm text-text-secondary mt-2">
-              {formatCurrency(annualStats?.categoryTotals?.[annualStats?.topCategory] || 0)} total
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Monthly Breakdown Chart Placeholder */}
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle>Monthly Trends</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-64 bg-gray-50 rounded-lg flex items-center justify-center">
-            <div className="text-center">
-              <BarChart3 className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-              <p className="text-gray-500 font-medium">Chart visualization</p>
-              <p className="text-sm text-gray-400">Monthly expense trends by category</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Category Annual Breakdown */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Category Annual Breakdown</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {breakdownLoading ? (
-            <div className="space-y-4">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="flex items-center space-x-4">
-                  <Skeleton className="h-4 w-4" />
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-4 w-20" />
-                  <Skeleton className="h-4 w-16" />
-                  <Skeleton className="h-4 w-12" />
-                  <Skeleton className="h-6 w-16" />
+            <AccordionItem value="years-list">
+              <AccordionTrigger className="flex justify-between items-center p-4 hover:bg-muted/50 transition-colors">
+                <h3 className="text-xl font-semibold text-text-primary">
+                  {selectedYearId
+                    ? `Ano Selecionado: ${financialYears?.find(y => y.id === selectedYearId)?.year || 'N/A'}`
+                    : "Selecione um Ano Financeiro"
+                  }
+                </h3>
+                <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+              </AccordionTrigger>
+              <AccordionContent className="p-4 border-t bg-background/50">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {financialYears?.map((year) => (
+                    <Card key={year.id} className="p-4 cursor-pointer hover:bg-accent/50 transition-colors"
+                          onClick={() => handleSelectYearForDetails(year.id)}>
+                      <CardHeader className="p-0 pb-2 flex-row justify-between items-center">
+                        <CardTitle className="text-lg">{year.year}</CardTitle>
+                        <div className="flex gap-2">
+                          <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setEditingYear(year); setModalOpen(true); }}>
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setDeletingYear(year); }}>
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </Button>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="p-0">
+                        <p className="text-sm text-text-secondary">Meta mensal total: {formatCurrency(year.totalMonthlyGoal)}</p>
+                        <p className="text-sm text-text-secondary mt-1">Categorias com metas: {year.monthlyGoals?.length || 0}</p>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
-              ))}
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+
+          {/* NOVO POSICIONAMENTO DO BOTÃO VOLTAR */}
+          {selectedYearId && (
+            <div className="mt-4 text-right">
+              <Button variant="outline" size="sm" onClick={handleGoBackFromDetails}>
+                <ArrowLeft className="h-4 w-4 mr-2" /> Voltar para Seleção de Anos
+              </Button>
             </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Total</TableHead>
-                  <TableHead>Avg/Month</TableHead>
-                  <TableHead>% of Total</TableHead>
-                  <TableHead>Trend</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {categoryBreakdown?.map((category: any, index: number) => (
-                  <TableRow key={category.category} className="hover:bg-gray-50">
-                    <TableCell>
-                      <div className="flex items-center">
-                        {getCategoryIcon(category.category)}
-                        <span className="ml-3 font-medium capitalize">
-                          {category.category.replace('-', ' ')}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="font-semibold">
-                      {formatCurrency(category.total)}
-                    </TableCell>
-                    <TableCell className="text-text-secondary">
-                      {formatCurrency(category.total / 12)}
-                    </TableCell>
-                    <TableCell className="text-text-secondary">
-                      {category.percentage.toFixed(1)}%
-                    </TableCell>
-                    <TableCell>
-                      <Badge 
-                        variant={index % 2 === 0 ? "default" : "secondary"}
-                        className="text-xs"
-                      >
-                        {index % 2 === 0 ? "↓ 2.1%" : "↑ 3.2%"}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {categoryBreakdown?.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8">
-                      <p className="text-text-secondary">No category data available for {selectedYear}</p>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
           )}
-        </CardContent>
-      </Card>
+
+          {/* Renderização condicional dos detalhes do ano */}
+          {selectedYearId && renderAnnualDetails()}
+        </>
+      )}
+
+      <AddFinancialYearModal open={modalOpen} onOpenChange={setModalOpen} initialData={editingYear} />
+
+      <AlertDialog open={!!deletingYear} onOpenChange={(open) => !open && setDeletingYear(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Deseja excluir o ano {deletingYear?.year}? Essa ação é irreversível.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deletingYear && deleteMutation.mutate(deletingYear.id)}>
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

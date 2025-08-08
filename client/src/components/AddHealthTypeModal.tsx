@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -55,7 +56,7 @@ export function AddHealthTypeModal({ open, onOpenChange }: Props) {
   const mutation = useMutation({
     mutationFn: (data: FormData) => apiRequest("POST", "/api/health-types", data),
     onSuccess: () => {
-      toast({ title: "Successo", description: "Demanda de saúde adicionada!" });
+      toast({ title: "Sucesso", description: "Demanda de saúde adicionada!" }); 
       queryClient.invalidateQueries({ queryKey: ["/api/health-types"] });
       onOpenChange(false);
       form.reset();
@@ -76,6 +77,9 @@ export function AddHealthTypeModal({ open, onOpenChange }: Props) {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Adicionar demanda de saúde</DialogTitle>
+          <DialogDescription>
+            Insira o nome da nova demanda de saúde (ex: tipo de consulta, tratamento, etc.).
+          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>

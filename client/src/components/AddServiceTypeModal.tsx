@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription, 
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -55,7 +56,7 @@ export function AddServiceTypeModal({ open, onOpenChange }: Props) {
   const mutation = useMutation({
     mutationFn: (data: FormData) => apiRequest("POST", "/api/service-types", data),
     onSuccess: () => {
-      toast({ title: "Successo", description: "Tipo de serviço adicionado!" });
+      toast({ title: "Sucesso", description: "Tipo de serviço adicionado!" }); 
       queryClient.invalidateQueries({ queryKey: ["/api/service-types"] });
       onOpenChange(false);
       form.reset();
@@ -75,6 +76,9 @@ export function AddServiceTypeModal({ open, onOpenChange }: Props) {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Adicionar tipo de serviço</DialogTitle>
+          <DialogDescription>
+            Insira o nome do novo tipo de serviço (ex: doméstico, técnico, automotivo, etc.).
+          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>

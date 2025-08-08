@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription, 
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -55,7 +56,7 @@ export function AddFamilyMemberModal({ open, onOpenChange }: Props) {
   const mutation = useMutation({
     mutationFn: (data: FormData) => apiRequest("POST", "/api/family-members", data),
     onSuccess: () => {
-      toast({ title: "Successo", description: "Membro da família adicionado!" });
+      toast({ title: "Sucesso", description: "Membro da família adicionado!" });
       queryClient.invalidateQueries({ queryKey: ["/api/family-members"] });
       onOpenChange(false);
       form.reset();
@@ -76,6 +77,9 @@ export function AddFamilyMemberModal({ open, onOpenChange }: Props) {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Adicionar membro da família</DialogTitle>
+          <DialogDescription>
+            Insira o nome do novo membro da família.
+          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>

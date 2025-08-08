@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription, 
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -44,7 +45,7 @@ export function AddCharityTypeModal({ open, onOpenChange }: Props) {
   // Inicializa o hook de formulário com o esquema de validação e os valores padrão
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { name: "" }, 
+    defaultValues: { name: "" },
   });
 
   // Inicializa os hooks de query e toast
@@ -55,7 +56,7 @@ export function AddCharityTypeModal({ open, onOpenChange }: Props) {
   const mutation = useMutation({
     mutationFn: (data: FormData) => apiRequest("POST", "/api/charity-types", data),
     onSuccess: () => {
-      toast({ title: "Successo", description: "Tipo de caridade adicionado!" });
+      toast({ title: "Sucesso", description: "Tipo de caridade adicionado!" }); 
       queryClient.invalidateQueries({ queryKey: ["/api/charity-types"] });
       onOpenChange(false);
       form.reset();
@@ -76,6 +77,9 @@ export function AddCharityTypeModal({ open, onOpenChange }: Props) {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Adicione um tipo de caridade</DialogTitle>
+          <DialogDescription>
+            Insira o nome do novo tipo de caridade.
+          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>

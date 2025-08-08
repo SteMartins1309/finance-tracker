@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription, 
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -55,7 +56,7 @@ export function AddShopModal({ open, onOpenChange }: Props) {
   const mutation = useMutation({
     mutationFn: (data: FormData) => apiRequest("POST", "/api/shops", data),
     onSuccess: () => {
-      toast({ title: "Successo", description: "Loja adicionada!" });
+      toast({ title: "Sucesso", description: "Loja adicionada!" }); 
       queryClient.invalidateQueries({ queryKey: ["/api/shops"] });
       onOpenChange(false);
       form.reset();
@@ -76,6 +77,9 @@ export function AddShopModal({ open, onOpenChange }: Props) {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Adicionar loja</DialogTitle>
+          <DialogDescription>
+            Insira o nome da nova loja onde você costuma fazer compras.
+          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>

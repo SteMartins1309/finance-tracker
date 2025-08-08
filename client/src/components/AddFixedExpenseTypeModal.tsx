@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -56,8 +57,8 @@ export function AddFixedExpenseTypeModal({ open, onOpenChange }: Props) {
     mutationFn: (data: FormData) =>
       apiRequest("POST", "/api/fixed-expense-types", data),
     onSuccess: () => {
-      toast({ title: "Successo", description: "Tipo de gasto fixo adicionado!" });
-      queryClient.invalidateQueries({ queryKey: ["/api/fixed-expense-types"] }); 
+      toast({ title: "Sucesso", description: "Tipo de gasto fixo adicionado!" }); 
+      queryClient.invalidateQueries({ queryKey: ["/api/fixed-expense-types"] });
       onOpenChange(false);
       form.reset();
     },
@@ -77,6 +78,9 @@ export function AddFixedExpenseTypeModal({ open, onOpenChange }: Props) {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Adicionar tipo de despesa fixa</DialogTitle>
+          <DialogDescription>
+            Insira o nome do novo tipo de despesa fixa.
+          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>

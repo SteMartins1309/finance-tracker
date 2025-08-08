@@ -1,9 +1,15 @@
+// IMPORTS
+
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle,
+  DialogDescription, 
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -18,6 +24,8 @@ import * as LucideIcons from "lucide-react"; // Para listar ícones Lucide React
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns"; // Importar format
+
 
 // Esquema de validação com Zod (deve ser o mesmo que em categories.tsx)
 const schema = z.object({
@@ -35,15 +43,13 @@ interface Props {
 
 // Lista de nomes de ícones Lucide React para seleção
 const availableIcons = Object.keys(LucideIcons).filter(name => {
-  // Filtra para mostrar apenas ícones que são componentes React (começam com maiúscula)
-  // e exclui alguns utilitários internos que não são ícones
-  return name[0] === name[0].toUpperCase() && !['createContext', 'forwardRef', 'default'].includes(name);
+  return name[0] === name[0].toUpperCase() && !['default', 'Icon', 'createReactComponent', 'typeIcon'].includes(name); 
 });
 
 export function AddOccasionalGroupModal({ open, onOpenChange }: Props) {
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { name: "", description: "", iconName: "" },
+    defaultValues: { name: "", description: "", iconName: "" }, // Incluir iconName no defaultValues
   });
 
   const queryClient = useQueryClient();
@@ -54,7 +60,7 @@ export function AddOccasionalGroupModal({ open, onOpenChange }: Props) {
     onSuccess: () => {
       toast({ title: "Sucesso", description: "Grupo ocasional adicionado!" });
       queryClient.invalidateQueries({ queryKey: ["/api/occasional-groups"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/occasional-groups/open"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/occasional-groups/open"] }); // Invalidar também esta query
       onOpenChange(false);
       form.reset();
     },
@@ -62,7 +68,7 @@ export function AddOccasionalGroupModal({ open, onOpenChange }: Props) {
       console.error("Detalhes do erro:", error);
       toast({
         title: "Erro",
-        description: error.message || "Falha ao adicionar grupo ocasional. Tente novamente.",
+        description: error.message || "Não foi possível adicionar grupo ocasional.",
         variant: "destructive",
       });
     },
@@ -73,6 +79,9 @@ export function AddOccasionalGroupModal({ open, onOpenChange }: Props) {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Adicionar Grupo Ocasional</DialogTitle>
+          <DialogDescription>
+            Crie um novo grupo para gastos de ocasiões especiais.
+          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
@@ -99,13 +108,14 @@ export function AddOccasionalGroupModal({ open, onOpenChange }: Props) {
                 </FormItem>
               )}
             />
+            {/* Campo de seleção de ícone */}
             <FormField
               control={form.control}
               name="iconName"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Ícone (opcional)</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value || ""}> 
                     <FormControl>
                       <SelectTrigger><SelectValue placeholder="Selecione um ícone" /></SelectTrigger>
                     </FormControl>

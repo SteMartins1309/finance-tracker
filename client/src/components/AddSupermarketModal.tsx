@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription, 
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -56,7 +57,7 @@ export function AddSupermarketModal({ open, onOpenChange }: Props) {
     mutationFn: (data: FormData) =>
       apiRequest("POST", "/api/supermarkets", data),
     onSuccess: (newSupermarket) => {
-      toast({ title: "Successo", description: "Supermercado adicionado!" });
+      toast({ title: "Sucesso", description: "Supermercado adicionado!" }); 
       queryClient.invalidateQueries({ queryKey: ["/api/supermarkets"] });
       onOpenChange(false);
       form.reset();
@@ -78,15 +79,14 @@ export function AddSupermarketModal({ open, onOpenChange }: Props) {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Adicionar Supermercado</DialogTitle>
+          <DialogDescription>
+            Insira o nome do novo supermercado que você frequenta.
+          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
           <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              form.handleSubmit((data) => mutation.mutate(data))(e);
-            }}
+            onSubmit={form.handleSubmit((data) => mutation.mutate(data))}
             className="space-y-4"
           >
             <FormField

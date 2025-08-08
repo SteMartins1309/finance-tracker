@@ -1,0 +1,1 @@
+ALTER TABLE "expenses" ADD COLUMN "installment_number" integer;
