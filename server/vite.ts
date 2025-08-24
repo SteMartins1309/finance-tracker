@@ -8,9 +8,6 @@ import { nanoid } from "nanoid";
 
 const viteLogger = createLogger();
 
-/**
- * Função de log formatado
- */
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
     hour: "numeric",
@@ -18,23 +15,16 @@ export function log(message: string, source = "express") {
     second: "2-digit",
     hour12: true,
   });
-
   console.log(`${formattedTime} [${source}] ${message}`);
 }
 
-/**
- * Configuração para desenvolvimento com Vite (HMR, middleware)
- */
+// Desenvolvimento com HMR
 export async function setupVite(app: Express, server: Server) {
-  const serverOptions = {
-    middlewareMode: true,
-    hmr: { server },
-    allowedHosts: true,
-  };
-
   const vite = await createViteServer({
     ...viteConfig,
     configFile: false,
+    server: { middlewareMode: true, hmr: { server }, allowedHosts: true },
+    appType: "custom",
     customLogger: {
       ...viteLogger,
       error: (msg, options) => {
@@ -42,17 +32,13 @@ export async function setupVite(app: Express, server: Server) {
         process.exit(1);
       },
     },
-    server: serverOptions,
-    appType: "custom",
   });
 
-  // Vite middleware
   app.use(vite.middlewares);
 
-  // SPA fallback para desenvolvimento
+  // SPA fallback
   app.use("*", async (req, res, next) => {
     const url = req.originalUrl;
-
     try {
       const clientTemplate = path.resolve(
         import.meta.dirname,
@@ -60,13 +46,11 @@ export async function setupVite(app: Express, server: Server) {
         "client",
         "index.html"
       );
-
       let template = await fs.promises.readFile(clientTemplate, "utf-8");
       template = template.replace(
         `src="/src/main.tsx"`,
         `src="/src/main.tsx?v=${nanoid()}"`
       );
-
       const page = await vite.transformIndexHtml(url, template);
       res.status(200).set({ "Content-Type": "text/html" }).end(page);
     } catch (e) {
@@ -76,12 +60,10 @@ export async function setupVite(app: Express, server: Server) {
   });
 }
 
-/**
- * Configuração para produção, servindo o frontend buildado
- */
+// Produção: serve frontend buildado
 export function serveStatic(app: Express) {
-  // Pasta correta do build do frontend
-  const distPath = path.resolve(import.meta.dirname, "../../client/dist");
+  // Caminho correto após build do server
+  const distPath = path.resolve(import.meta.dirname, "../client/dist");
 
   if (!fs.existsSync(distPath)) {
     throw new Error(`Could not find the build directory: ${distPath}`);

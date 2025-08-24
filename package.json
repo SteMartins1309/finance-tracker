@@ -4,9 +4,11 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
-  "start": "node server/dist/index.js",
-  "build": "cd server && esbuild index.ts --platform=node --bundle --format=esm --outdir=dist",
-  "heroku-postbuild": "cd client && npm install && npm run build && cd .. && npm run build"
+    "start": "node server/dist/index.js",
+    "build": "npm run build:client && npm run build:server",
+    "build:client": "cd client && npm install && npm run build",
+    "build:server": "esbuild server/index.ts --bundle --platform=node --outfile=server/dist/index.js --sourcemap",
+    "heroku-postbuild": "npm run build"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
