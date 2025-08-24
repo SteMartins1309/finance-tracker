@@ -2,8 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-
-
 :root {
   /* Cores base do Shadcn/UI */
   --background: 0 0% 100%;
@@ -16,11 +14,11 @@
   --card-foreground: 20 14.3% 4.1%;
   --border: 20 5.9% 90%;
   --input: 20 5.9% 90%;
-  --primary: 207 90% 54%; /* #1976D2 */
+  --primary: 207 90% 54%;
   --primary-foreground: 211 100% 99%;
-  --secondary: 122 39% 49%; /* #388E3C */
+  --secondary: 122 39% 49%;
   --secondary-foreground: 60 9.1% 97.8%;
-  --accent: 36 100% 48%; /* #F57C00 */
+  --accent: 36 100% 48%;
   --accent-foreground: 24 9.8% 10%;
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 60 9.1% 97.8%;
@@ -31,13 +29,11 @@
   --chart-3: 197 37% 24%;
   --chart-4: 43 74% 66%;
   --chart-5: 27 87% 67%;
-
- /* Cores customizadas do seu design system */
-  --surface: 60 9% 98%; /* #FAFAFA */
-  --text-primary: 0 0% 13%; /* #212121 */
-  --text-secondary: 0 0% 46%; /* #757575 */
-
-  /* Variáveis para Sidebar (Modo Claro) */
+  /* Variáveis customizadas */
+  --surface: 60 9% 98%;
+  --text-primary: 0 0% 13%;
+  --text-secondary: 0 0% 46%;
+  /* Sidebar */
   --sidebar-background: 0 0% 100%;
   --sidebar-foreground: 20 14.3% 4.1%;
   --sidebar-primary: 207 90% 54%;
@@ -46,40 +42,10 @@
   --sidebar-accent-foreground: 24 9.8% 10%;
   --sidebar-border: 20 5.9% 90%;
   --sidebar-ring: 20 14.3% 4.1%;
-
-  /* Variáveis para Cores de Ícones de Categoria (Modo Claro) */
-  --fixed-icon: 39 100% 63%;
-  --supermarket-icon: 12 100% 40%;
-  --food-icon: 25 100% 45%;
-  --transportation-icon: 220 60% 13%;
-  --services-icon: 0 0% 30%;
-  --leisure-icon: 140 40% 30%;
-  --personal-care-icon: 330 60% 50%;
-  --shopping-icon: 190 60% 30%;
-  --health-icon: 225 60% 45%;
-  --family-icon: 280 40% 40%;
-  --charity-icon: 310 60% 30%;
-  --occasional-icon: 270 50% 60%;
-  --default-icon: 220 5% 50%;
-
-  /* Variáveis para Cores de Fundo de Ícones de Categoria (Modo Claro) */
-  --fixed-background: 39 100% 90%;
-  --supermarket-background: 12 100% 90%;
-  --food-background: 25 100% 90%;
-  --transportation-background: 220 20% 95%;
-  --services-background: 0 0% 90%;
-  --leisure-background: 140 40% 90%;
-  --personal-care-background: 330 60% 90%;
-  --shopping-background: 190 60% 90%;
-  --health-background: 225 60% 90%;
-  --family-background: 280 40% 90%;
-  --charity-background: 310 60% 90%;
-  --occasional-background: 270 50% 90%;
-  --default-background: 0 0% 90%;
 }
 
+/* Dark mode */
 .dark {
-  /* Cores base do Shadcn/UI */
   --background: 240 10% 3.9%;
   --foreground: 0 0% 98%;
   --muted: 240 3.7% 15.9%;
@@ -102,8 +68,6 @@
   --surface: 240 10% 3.9%;
   --text-primary: 0 0% 98%;
   --text-secondary: 240 5% 64.9%;
-
-  /* Variáveis para Sidebar (Modo Escuro) */
   --sidebar-background: 240 10% 3.9%;
   --sidebar-foreground: 0 0% 98%;
   --sidebar-primary: 207 90% 54%;
@@ -112,41 +76,12 @@
   --sidebar-accent-foreground: 0 0% 98%;
   --sidebar-border: 240 3.7% 15.9%;
   --sidebar-ring: 240 4.9% 83.9%;
-
-  /* Variáveis para Cores de Ícones de Categoria (Modo Escuro) */
-  --fixed-icon: 39 100% 80%;
-  --supermarket-icon: 12 100% 70%;
-  --food-icon: 25 100% 70%;
-  --transportation-icon: 220 60% 60%;
-  --services-icon: 0 0% 70%;
-  --leisure-icon: 140 40% 60%;
-  --personal-care-icon: 330 60% 70%;
-  --shopping-icon: 190 60% 60%;
-  --health-icon: 225 60% 70%;
-  --family-icon: 280 40% 60%;
-  --charity-icon: 310 60% 60%;
-  --occasional-icon: 270 50% 70%;
-  --default-icon: 220 5% 70%;
-
-  /* Variáveis para Cores de Fundo de Ícones de Categoria (Modo Escuro) */
-  --fixed-background: 39 100% 20%;
-  --supermarket-background: 12 100% 20%;
-  --food-background: 25 100% 20%;
-  --transportation-background: 220 20% 20%;
-  --services-background: 0 0% 20%;
-  --leisure-background: 140 40% 20%;
-  --personal-care-background: 330 60% 20%;
-  --shopping-background: 190 60% 20%;
-  --health-background: 225 60% 20%;
-  --family-background: 280 40% 20%;
-  --charity-background: 310 60% 20%;
-  --occasional-background: 270 50% 20%;
-  --default-background: 0 0% 20%;
 }
 
 @layer base {
+  /* Substituição do 'border-border' por 'border' do Tailwind */
   * {
-    @apply border-border;
+    @apply border;
   }
 
   body {
@@ -159,11 +94,11 @@
   .bg-surface {
     background-color: hsl(var(--surface));
   }
-  
+
   .text-text-primary {
     color: hsl(var(--text-primary));
   }
-  
+
   .text-text-secondary {
     color: hsl(var(--text-secondary));
   }
@@ -173,30 +108,26 @@
   }
 }
 
-/* Estilo para forçar a barra de rolagem horizontal visível em Webkit (Chrome, Safari, Edge) */
-
-/* Regras para o contêiner */
+/* Scrollbar customizado */
 .force-scrollbar-x {
-  /* overflow-x: scroll !important; // Não aqui, pois estará no style inline */
-  scrollbar-width: thin; /* Para Firefox */
-  scrollbar-color: rgba(0, 0, 0, 0.3) transparent; /* Para Firefox */
-  border-bottom: 1px solid transparent; /* Para ajudar a forçar o layout */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0,0,0,0.3) transparent;
+  border-bottom: 1px solid transparent;
 }
 
-/* Regras para Webkit Scrollbars */
 .force-scrollbar-x::-webkit-scrollbar {
-  -webkit-appearance: none !important;
-  width: 100% !important;
-  height: 8px !important;
+  -webkit-appearance: none;
+  width: 100%;
+  height: 8px;
 }
 
 .force-scrollbar-x::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.1) !important;
-  border-radius: 10px !important;
+  background: rgba(0,0,0,0.1);
+  border-radius: 10px;
 }
 
 .force-scrollbar-x::-webkit-scrollbar-thumb {
-  background-color: rgba(0, 0, 0, 0.5) !important;
-  border-radius: 10px !important;
-  border: 1px solid transparent !important;
+  background-color: rgba(0,0,0,0.5);
+  border-radius: 10px;
+  border: 1px solid transparent;
 }
