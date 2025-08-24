@@ -67,8 +67,9 @@ export async function setupVite(app: Express, server: Server) {
   });
 }
 
+// server/vite.ts
 export function serveStatic(app: Express) {
-  const distPath = path.resolve(import.meta.dirname, "public");
+  const distPath = path.resolve(import.meta.dirname, "../../client/dist");
 
   if (!fs.existsSync(distPath)) {
     throw new Error(
@@ -83,3 +84,4 @@ export function serveStatic(app: Express) {
     res.sendFile(path.resolve(distPath, "index.html"));
   });
 }
+
