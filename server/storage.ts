@@ -593,10 +593,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   // GET RECENT EXPENSES: Retorna as despesas mais recentes
-  async getRecentExpenses(limit: number = 10): Promise<any[]> { 
+  async getRecentExpenses(limit: number = 10): Promise<any[]> {
     try {
       const result = await this.getExpensesBaseQuery()
-        // Removida a linha: .where(eq(expenses.paymentStatus, 'paid'))
         .orderBy(desc(expenses.purchaseDate))
         .limit(limit);
       return this.mapExpenseResult(result);

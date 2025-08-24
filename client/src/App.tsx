@@ -40,7 +40,7 @@ function App() {
             <AppRouter /> {/* Componente de roteamento */}
           </main>
         </div>
-        {/* Componente para exibir os toasts (notificações) */}
+        {/* Componente para exibir os toast (notificações) */}
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>

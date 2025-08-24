@@ -274,6 +274,7 @@ var expenses = pgTable("expenses", {
   routineCategory: routineCategoryEnum("routine_category"),
   occasionalGroupId: integer("occasional_group_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  paymentStatus: paymentStatusEnum("payment_status").notNull().default("pending"),
   fixedExpenseTypeId: integer("fixed_expense_type_id"),
   frequency: frequencyTypeEnum("frequency"),
   supermarketId: integer("supermarket_id"),
@@ -308,8 +309,6 @@ var expenses = pgTable("expenses", {
   // CAMPOS ADICIONADOS PARA RECORRÊNCIAS
   recurringExpenseId: integer("recurring_expense_id"),
   // FK para recurring_expenses
-  paymentStatus: paymentStatusEnum("payment_status").notNull().default("pending"),
-  // Status de pagamento
   installmentNumber: integer("installment_number")
   // Número da parcela
 });
@@ -1115,7 +1114,7 @@ var DatabaseStorage = class {
   // GET RECENT EXPENSES: Retorna as despesas mais recentes
   async getRecentExpenses(limit = 10) {
     try {
-      const result = await this.getExpensesBaseQuery().where(eq(expenses.paymentStatus, "paid")).orderBy(desc(expenses.purchaseDate)).limit(limit);
+      const result = await this.getExpensesBaseQuery().orderBy(desc(expenses.purchaseDate)).limit(limit);
       return this.mapExpenseResult(result);
     } catch (error) {
       console.error("Error in getRecentExpenses:", error);
@@ -1128,10 +1127,32 @@ var DatabaseStorage = class {
     return deletedExpense || null;
   }
   // UPDATE EXPENSE: Atualiza uma despesa no banco de dados
-  async updateExpense(id, insertExpense) {
-    console.log("Storage: updateExpense - purchaseDate type:", typeof insertExpense.purchaseDate, "value:", insertExpense.purchaseDate);
-    const [updatedExpense] = await db.update(expenses).set(insertExpense).where(eq(expenses.id, id)).returning();
-    return updatedExpense || null;
+  async updateExpense(id, expense) {
+    return await db.transaction(async (tx) => {
+      const oldExpense = (await tx.select().from(expenses).where(eq(expenses.id, id)))[0];
+      if (!oldExpense) {
+        return null;
+      }
+      const [updatedExpense] = await tx.update(expenses).set(expense).where(eq(expenses.id, id)).returning();
+      if (updatedExpense && updatedExpense.recurringExpenseId) {
+        const oldPaymentStatus = oldExpense.paymentStatus;
+        const newPaymentStatus = updatedExpense.paymentStatus;
+        if (oldPaymentStatus !== newPaymentStatus) {
+          if (newPaymentStatus === "paid") {
+            await tx.update(recurringExpenses).set({
+              installmentsTrulyPaid: sql`${recurringExpenses.installmentsTrulyPaid} + 1`,
+              updatedAt: /* @__PURE__ */ new Date()
+            }).where(eq(recurringExpenses.id, updatedExpense.recurringExpenseId));
+          } else if (newPaymentStatus === "pending") {
+            await tx.update(recurringExpenses).set({
+              installmentsTrulyPaid: sql`${recurringExpenses.installmentsTrulyPaid} - 1`,
+              updatedAt: /* @__PURE__ */ new Date()
+            }).where(eq(recurringExpenses.id, updatedExpense.recurringExpenseId));
+          }
+        }
+      }
+      return updatedExpense || null;
+    });
   }
   // MARK ESPENSE AS PAID: Marcar uma despesa como paga
   async markExpenseAsPaid(id) {
@@ -1183,57 +1204,55 @@ var DatabaseStorage = class {
       throw error;
     }
   }
-  // GET MONTHLY STATS: Retorna as estatísticas mensais
+  // GET MONTHLY STATS: Retorna as estatísticas mensais (pagas, previstas e totais)
   async getMonthlyStats() {
     try {
       const currentDate = /* @__PURE__ */ new Date();
       const currentYear = currentDate.getFullYear();
       const currentMonth = currentDate.getMonth() + 1;
-      const monthlyExpenses = await this.getExpensesByMonth(currentYear, currentMonth);
+      const startDate = new Date(currentYear, currentMonth - 1, 1);
+      const endDate = new Date(currentYear, currentMonth, 0, 23, 59, 59, 999);
+      const result = await db.select({
+        totalPaid: sql`SUM(CASE WHEN ${expenses.paymentStatus} = 'paid' THEN ${expenses.amount} ELSE 0 END)`.as("total_paid"),
+        totalPending: sql`SUM(CASE WHEN ${expenses.paymentStatus} = 'pending' THEN ${expenses.amount} ELSE 0 END)`.as("total_pending"),
+        totalMonthly: sql`SUM(${expenses.amount})`.as("total_monthly")
+      }).from(expenses).where(and(
+        gte(expenses.purchaseDate, startDate),
+        lte(expenses.purchaseDate, endDate)
+      ));
       const yearlyExpenses = await this.getExpensesByYear(currentYear);
-      const monthlyTotal = monthlyExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
       const yearlyTotal = yearlyExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
       const averageMonthly = yearlyTotal / currentMonth;
       const categoriesCount = new Set(yearlyExpenses.map((exp) => exp.routineCategory || "occasional")).size;
       return {
-        monthlyTotal,
-        //
+        ...result[0],
         yearlyTotal,
-        //
         averageMonthly,
-        //
         categoriesCount
-        //
       };
     } catch (error) {
       console.error("Error in getMonthlyStats:", error);
       throw error;
     }
   }
-  // GET ANNUAL STATS: Retorna as estatísticas anuais
+  // GET ANNUAL STATS: Retorna as estatísticas anuais (somente de despesas pagas)
   async getAnnualStats(year) {
     try {
       const yearlyExpenses = await this.getExpensesByYear(year);
-      const total = yearlyExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
+      const paidYearlyExpenses = yearlyExpenses.filter((exp) => exp.paymentStatus === "paid");
+      const total = paidYearlyExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
       const avgMonthly = total / 12;
       const categoryTotals = {};
-      yearlyExpenses.forEach((expense) => {
+      paidYearlyExpenses.forEach((expense) => {
         const category = expense.routineCategory || "occasional";
         categoryTotals[category] = (categoryTotals[category] || 0) + parseFloat(expense.amount);
       });
-      const topCategory = (
-        //
-        Object.keys(categoryTotals).length > 0 ? Object.entries(categoryTotals).reduce((a, b) => categoryTotals[a[0]] > categoryTotals[b[0]] ? a : b)[0] : "none"
-      );
+      const topCategory = Object.keys(categoryTotals).length > 0 ? Object.entries(categoryTotals).reduce((a, b) => categoryTotals[a[0]] > categoryTotals[b[0]] ? a : b)[0] : "none";
       return {
         total,
-        //
         avgMonthly,
-        //
         topCategory,
-        //
         categoryTotals
-        //
       };
     } catch (error) {
       console.error("Error in getAnnualStats:", error);
@@ -2961,14 +2980,44 @@ async function registerRoutes(app2) {
       handleServerError(res, error, "Failed to trigger recurring expenses generation");
     }
   });
+  app2.patch("/api/expenses/:id/payment-status", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid ID" });
+      }
+      const { paymentStatus } = req.body;
+      const statusSchema = z2.object({
+        paymentStatus: z2.enum(["paid", "pending"])
+      });
+      const validatedStatus = statusSchema.parse({ paymentStatus });
+      const updatedExpense = await storage.updateExpense(id, validatedStatus);
+      if (!updatedExpense) {
+        return res.status(404).json({ error: "Expense not found" });
+      }
+      res.status(200).json(updatedExpense);
+    } catch (error) {
+      if (error instanceof z2.ZodError) {
+        return handleZodError(res, error);
+      }
+      handleServerError(res, error, "Failed to update payment status");
+    }
+  });
   const httpServer = createServer(app2);
   return httpServer;
 }
 
 // server/index.ts
+import cors from "cors";
 var app = express2();
 app.use(express2.json());
 app.use(express2.urlencoded({ extended: false }));
+app.use(cors({
+  origin: process.env.NODE_ENV === "development" ? "http://localhost:5173" : "*",
+  // Ajuste a porta do Vite dev server se for diferente
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
 app.use((req, res, next) => {
   const start = Date.now();
   const path3 = req.path;
@@ -2983,10 +3032,8 @@ app.use((req, res, next) => {
     if (path3.startsWith("/api")) {
       let logLine = `${req.method} ${path3} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-      if (logLine.length > 200) {
-        logLine = logLine.slice(0, 199) + "\u2026";
+        const jsonString = JSON.stringify(capturedJsonResponse);
+        logLine += ` :: ${jsonString.length > 100 ? jsonString.substring(0, 97) + "..." : jsonString}`;
       }
       log(logLine);
     }
@@ -3014,7 +3061,7 @@ app.use((req, res, next) => {
     if (process.env.NODE_ENV === "development") {
       console.error(err);
     } else {
-      console.error(err);
+      console.error(`Production Error (${status}): ${message}`);
     }
   });
   if (process.env.NODE_ENV === "development") {
@@ -3024,13 +3071,17 @@ app.use((req, res, next) => {
     log("Ambiente: Produ\xE7\xE3o. Servindo arquivos est\xE1ticos...");
     serveStatic(app);
   }
-  const port = 5e3;
+  const port = process.env.PORT || 5e3;
   server.listen({
-    port,
+    port: Number(port),
+    // Converte a porta para número, pois process.env.PORT é string
     host: "0.0.0.0"
+    // Escuta em todas as interfaces de rede (bom para containers/localhost)
   }, () => {
     log(`Servidor rodando em: http://localhost:${port}`);
     if (process.env.NODE_ENV === "development") {
+      log(`Acesse o cliente em: http://localhost:5173 (ou a porta do Vite dev server)`);
+    } else {
       log(`Acesse o cliente em: http://localhost:${port}`);
     }
   });

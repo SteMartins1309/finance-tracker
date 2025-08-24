@@ -89,12 +89,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Rota para buscar despesas recentes (AGORA SOMENTE 'PAID')
+  // Rota para buscar despesas recentes
   app.get("/api/expenses/recent", async (req, res) => {
     try {
-      // storage.getRecentExpenses já foi alterado para filtrar por 'paid'
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
-      const expenses = await storage.getRecentExpenses(limit);
+      // O backend agora deve retornar todos os gastos, e o frontend filtra/mostra o status
+      const expenses = await storage.getRecentExpenses(limit); 
       res.json(expenses);
     } catch (error) {
       handleServerError(res, error, "Failed to fetch recent expenses");
@@ -616,6 +616,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Início das rotas de manutenção das subcategorias 'leisure'
   app.post("/api/leisure-types", async (req, res) => {
     try {
+      // Adicione um console.log aqui para inspecionar o corpo da requisição
+      console.log("POST /api/leisure-types - Request body:", req.body); 
       const leisureType = insertLeisureTypeSchema.parse(req.body);
       const created = await storage.addLeisureType(leisureType);
       res.json(created);
