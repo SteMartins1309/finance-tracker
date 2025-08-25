@@ -2,12 +2,15 @@
   "name": "rest-express",
   "version": "1.0.0",
   "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
   "license": "MIT",
   "scripts": {
     "start": "node server/dist/index.js",
     "build": "npm run build:client && npm run build:server",
     "build:client": "cd client && npm install && npm run build",
-    "build:server": "esbuild server/index.ts --bundle --platform=node --outfile=server/dist/index.js --sourcemap",
+    "build:server": "esbuild server/index.ts --bundle --platform=node --format=esm --outfile=server/dist/index.js --sourcemap --external:@babel/* --external:lightningcss",
     "heroku-postbuild": "npm run build"
   },
   "dependencies": {
