@@ -1,6 +1,12 @@
 import express from "express";
 import http from "http";
 import { setupVite, serveStatic, log } from "./vite";
+import path from 'path';
+// ou, se precisar de require:
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const bodyParser = require('body-parser');
+
 
 (async () => {
   const app = express();
